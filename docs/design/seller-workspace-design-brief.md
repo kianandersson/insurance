@@ -64,9 +64,19 @@ These are settled. Your creative latitude is the visual language (§7), not the 
    **structure and nesting**, never by drawn nodes and edges. The word "graph" describes the data
    model underneath — it is not a visualization.
 
-2. **Change is made legible by a very subtle entrance animation, nothing louder.** When a value or a
-   recommendation arrives, it *animates in* gently. It does not then keep flashing or wear a "new"
-   badge. Freshness lives in the motion of arriving.
+2. **The record fills itself from three streams — and a key value blooms a whole cluster.** Values
+   arrive from (a) the **live conversation** (the AI derives them as the prospect talks), (b)
+   **automatic register lookups**, and (c) **manual entry**. The essential motion the design must show:
+   certain values are **identifiers** — a vehicle's licence plate, a company's registration number, an
+   address — and the moment one lands, it **automatically triggers a register lookup that pours in a
+   whole cluster of related, verified values at once**. The record does not gain one field; it **grows
+   a whole card/branch** (a licence plate → the full vehicle: make, model, year, first registration, …).
+   This self-building cascade — a value that fetches more values — is the **heart of the product**, not
+   just a running transcription of what was said.
+
+   **Arrival is made legible by a very subtle entrance animation, nothing louder.** A single field
+   animates in gently; a lookup's cluster arrives as **one calm, staggered reveal**. Nothing flashes
+   afterward or wears a "new" badge — freshness lives in the motion of arriving.
 
 3. **Trust/provenance is calm by default, deep on demand.**
    - Register-sourced and manually-entered values look like ordinary values — no origin badges.
@@ -108,10 +118,21 @@ These are settled. Your creative latitude is the visual language (§7), not the 
 Design for these specific journeys — coherence beats completeness.
 
 **Hero — a thin personal lead that fills up live.** The record starts nearly empty: a name, a phone
-number. The seller starts a call. As the prospect talks, values arrive and animate in — a car, its
-year, annual mileage — each "not verified yet" until the seller confirms with a tap. Recommendations
-appear and sharpen as the picture fills. This journey is where the whole product's originality is
-visible; make it sing.
+number. The seller starts a call. Two things fill the record, and the prototype must show **both**:
+
+- **The enrichment bloom (the essential moment, currently missing).** An **identifier** lands — the
+  prospect reads out a **licence plate**, or the seller types it in — and it triggers an automatic
+  **register lookup** that blooms a full, verified **vehicle card** into the record in one staggered
+  reveal (make, model, year, first registration, …). One key → a whole cluster. The same pattern holds
+  for an address (→ property) or, on a company lead, a registration number (→ the company and its
+  vehicles).
+- **The conversational trickle.** Things no register holds — annual mileage, "I park it on the
+  street" — are **heard by the AI** and arrive marked **"not verified yet"** until the seller confirms
+  with a tap.
+
+Recommendations appear and sharpen as the picture fills. This journey — the record **building itself**
+from a spoken plate, not merely transcribing speech — is where the product's originality lives. Make
+it sing.
 
 **Required second state — a rich commercial lead, already full.** A company lead arrives already
 populated from registers before any call: multiple parties, several vehicles, existing cover. The
@@ -126,10 +147,14 @@ just when it is filling** — a design that only works empty-and-filling is a fa
   mockups, and not wired to any real backend (the real build is a separate effort). The calm
   self-evolving quality and the subtle arrival animations can only be judged **in motion**, so build
   it interactive.
-- Demonstrate both the **resting state** and the **key transitions in motion** (a value arriving and
-  being confirmed; a recommendation appearing), in **both lead states** from §4.
-- Produce **two distinct visual directions** on top of the **one fixed interaction model** in §3, so
-  the visual language can be chosen without reopening the settled interaction decisions.
+- Demonstrate both the **resting state** and the **key transitions in motion** — above all **the
+  enrichment bloom** (an identifier triggering a register lookup that staggers a verified cluster into
+  the record), plus a heard value being confirmed and a recommendation appearing — in **both lead
+  states** from §4.
+- Produce **one fully-realized visual direction** on top of the fixed interaction model in §3. (The
+  interaction model is fixed, so "variants" collapse into trivial recolors and add little value —
+  spend the effort on getting the *behaviour* right, above all the enrichment bloom. Visual
+  alternatives can come later, once the interaction is right.)
 - **Responsive: desktop is the primary platform, but it must remain fully usable on mobile.** Show how
   the multi-region desktop layout reflows to a stacked / tabbed mobile layout with the record as the
   primary surface.
@@ -164,10 +189,12 @@ yourself — but in *this* character:
   dominant color, high-impact page-load animation) are mostly **wrong here** — they fight the calm.
   Apply your own restraint discipline: keep everything quiet and disciplined, and let the **one
   signature moment** carry the character.
-- **The signature element is behavioural, not decorative:** *a value the seller just heard on the call
-  arriving on the record — animating in, marked "not verified yet", confirmed in one gesture — the
-  page filling itself while the seller talks.* That moment is what this product is remembered by.
-  Design everything else to stay out of its way.
+- **The signature element is behavioural, not decorative:** *the record building itself.* Two motions
+  carry it: the **enrichment bloom** (an identifier such as a licence plate triggers a lookup and a
+  whole verified cluster staggers into place) and the softer **conversational trickle** (a heard value
+  arrives "not verified yet" and is confirmed in one gesture). The record assembling itself —
+  especially the bloom from a single spoken plate — is what this product is remembered by. Design
+  everything else to stay out of its way.
 
 **Avoid:**
 - Generic AI defaults — Inter/Roboto/Arial/system fonts, purple gradients on white, cookie-cutter
