@@ -83,15 +83,26 @@ These are settled. Your creative latitude is the visual language (§7), not the 
    animates in gently; a lookup's cluster arrives as **one calm, staggered reveal**. Nothing flashes
    afterward or wears a "new" badge — freshness lives in the motion of arriving.
 
-3. **Trust/provenance is calm by default, deep on demand.**
+3. **Trust/provenance is calm by default, deep on demand — and the seller *corrects*, never *approves*.**
    - Register-sourced and manually-entered values look like ordinary values — no origin badges.
    - A value the AI *heard on the call* looks like any other value but carries **one quiet marker:
-     "not verified yet"**, with an **inline way to confirm it** in a single gesture.
+     "not verified yet"**. This marker is **passive** — the value is fully usable as it stands, and the
+     seller can leave it marked indefinitely. It is a trust *indication*, not a task.
+   - **The seller's primary action is to *correct* a wrong value, not to *confirm* a right one.** The
+     product's stance is that the AI is autonomous and the seller only intervenes to fix what is wrong —
+     they must **never be clicking through a queue of confirmations during a call**. So: **Correct** is
+     the first-class, always-available action on any value; a lightweight **Confirm** may exist as an
+     *optional* elevation of a heard value to verified, but it must never be framed as a to-do to clear,
+     and nothing may score or tally "values confirmed" as if it were progress.
    - That is the *only* trust state on the resting surface. Do **not** decorate every field with a
      source, and do **not** surface source-conflict UI at rest.
-   - Depth exists but stays out of the way: the seller can **drill into a value** to see its full
-     history/origin and take advanced actions. Sketch this as a secondary state; it is not where the
-     design energy goes.
+   - Depth exists but stays out of the way, and it must be **real, not a decorative panel of dead
+     buttons**. Drilling into a value reveals its **actual append history**: enrichment **never
+     overwrites**, so a value can hold **several source-tagged candidates at once** (e.g. a register
+     value and a differing heard value), shown as **one most-trusted candidate with the others
+     inspectable**, plus the origin of each and the ability to correct or delete. Sketch this as a
+     secondary state — it is not where the design energy goes — but it must express the many-candidates,
+     never-overwrite model, not fake it with static labels.
 
 4. **Recommendations are the seller's primary decision surface — make them fast to scan.** Each
    recommendation is a compact, scannable card showing four signals:
@@ -132,8 +143,10 @@ number. The seller starts a call. Two things fill the record, and the prototype 
   for an address (→ property) or, on a company lead, a registration number (→ the company and its
   vehicles).
 - **The conversational trickle.** Things no register holds — annual mileage, "I park it on the
-  street" — are **heard by the AI** and arrive marked **"not verified yet"** until the seller confirms
-  with a tap.
+  street" — are **heard by the AI** and arrive marked **"not verified yet"**. They are usable
+  immediately; the seller does not confirm them one by one. Show at least one **mis-heard value being
+  *corrected*** — that is the real intervention (see §3.3), and it is the moment "the seller drives, the
+  AI assists" becomes visible.
 
 Recommendations appear and sharpen as the picture fills. This journey — the record **building itself**
 from a spoken plate, not merely transcribing speech — is where the product's originality lives. Make
