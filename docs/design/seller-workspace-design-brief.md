@@ -11,15 +11,15 @@ design anything.
 You have access to this repository. **Read these before you start — they are context for you, not
 copy for the screen:**
 
-- **GitHub issue #3** ("Spec: Insurance platform PoC") — the product spec, and the most important
-  thing to read. **It is a GitHub issue, not a file in the repo** — fetch it from GitHub with your
-  GitHub access (`gh issue view 3`, or the GitHub API on this connected repo). Do **not** look for it
-  on the filesystem; the source lives only on GitHub, so a file search will fail and you must not give
-  up if it does. Read it in full to understand the domain and how the pieces relate — especially the
-  user stories on the living graph, provenance, and the copilot, which carry behavioural nuance that
-  the glossary alone does not. **Do not treat its user stories as a widget checklist, and do not put
-  its wording on screen.** It is written in an internal engineering vocabulary that must never surface
-  as UI text (see §6).
+- **`docs/design/seller-workspace-spec.md`** — the **product spec, distilled for design**, and the
+  most important thing to read after this brief. It is the **feature and behaviour source of truth**:
+  what the workspace must *do*, and how each part behaves (the living record, provenance, enrichment,
+  the live call incl. **per-call notes and the end-of-call summary**, recommendations, pricing). The
+  full spec lives only as a GitHub issue the design tool cannot read, so its seller-facing surface is
+  captured in that file on purpose — read it in full. **Every seller-facing feature it lists must be
+  present in your design**, even ones a given journey doesn't exercise. But **do not put its sentences
+  on screen** and **do not treat it as a literal widget checklist** — read for behaviour and write
+  your own product microcopy (see §6).
 - **`CONTEXT.md`** — the project's ubiquitous language (the shared, precise names for domain concepts).
 - **`docs/adr/`** — architecture decisions, for background only.
 
@@ -129,9 +129,15 @@ These are settled. Your creative latitude is the visual language (§7), not the 
 
 ---
 
-## 4. Design against these two concrete leads (not against the feature list)
+## 4. Design against these two concrete leads — but include the whole feature surface
 
-Design for these specific journeys — coherence beats completeness.
+Design *against* these two specific journeys so the result is coherent rather than a checklist of
+disconnected widgets. That is the **method**, not the scope. **The workspace must still contain every
+seller-facing feature in `seller-workspace-spec.md`** — the per-call notes, the end-of-call summary,
+the value drill-down with its append history, the manual-entry/correct affordances, the pricing
+signals, the "why did this appear" — even where a given journey below doesn't happen to exercise it.
+A feature the spec defines but the design omits is a gap, not a simplification. Coherence is *how* you
+present the surface; it is not a licence to drop parts of it.
 
 **Hero — a thin personal lead that fills up live.** The record starts nearly empty: a name, a phone
 number. The seller starts a call. Two things fill the record, and the prototype must show **both**:
@@ -167,8 +173,8 @@ just when it is filling** — a design that only works empty-and-filling is a fa
   it interactive.
 - Demonstrate both the **resting state** and the **key transitions in motion** — above all **the
   enrichment bloom** (an identifier triggering a register lookup that staggers a verified cluster into
-  the record), plus a heard value being confirmed and a recommendation appearing — in **both lead
-  states** from §4.
+  the record), plus a **mis-heard value being corrected**, the per-call notes and end-of-call summary,
+  and a recommendation appearing — in **both lead states** from §4.
 - Produce **one fully-realized visual direction** on top of the fixed interaction model in §3. (The
   interaction model is fixed, so "variants" collapse into trivial recolors and add little value —
   spend the effort on getting the *behaviour* right, above all the enrichment bloom. Visual
