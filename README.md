@@ -1,11 +1,9 @@
-# Insurance Sales Platform
+# Insurance Platform
 
-A market-agnostic platform for working an insurance sales lead. It assembles the lead into a
-graph of related parties and insurable objects, enriches it from external sources, tracks
-lawful basis and consent, and drives the sale through a seller-facing copilot. Denmark is the
-first configured market — its registers and statutes are data, not model vocabulary.
+A general insurance intermediation platform. Its capabilities grow feature by feature; the
+first is working a sales lead from prospect to recommendation.
 
-Early-stage: the domain and stack are settled, but there is no runnable app yet.
+Early-stage: no runnable app yet.
 
 ## Layout
 
