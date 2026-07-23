@@ -11,10 +11,15 @@ design anything.
 You have access to this repository. **Read these before you start — they are context for you, not
 copy for the screen:**
 
-- **GitHub issue #3** ("Spec: Insurance platform PoC") — the product spec. Read it to understand the
-  domain and how the pieces relate. **Do not treat its user stories as a widget checklist, and do not
-  put its wording on screen.** It is written in an internal engineering vocabulary that must never
-  surface as UI text (see §6).
+- **GitHub issue #3** ("Spec: Insurance platform PoC") — the product spec, and the most important
+  thing to read. **It is a GitHub issue, not a file in the repo** — fetch it from GitHub with your
+  GitHub access (`gh issue view 3`, or the GitHub API on this connected repo). Do **not** look for it
+  on the filesystem; the source lives only on GitHub, so a file search will fail and you must not give
+  up if it does. Read it in full to understand the domain and how the pieces relate — especially the
+  user stories on the living graph, provenance, and the copilot, which carry behavioural nuance that
+  the glossary alone does not. **Do not treat its user stories as a widget checklist, and do not put
+  its wording on screen.** It is written in an internal engineering vocabulary that must never surface
+  as UI text (see §6).
 - **`CONTEXT.md`** — the project's ubiquitous language (the shared, precise names for domain concepts).
 - **`docs/adr/`** — architecture decisions, for background only.
 
