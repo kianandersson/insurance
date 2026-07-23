@@ -1,0 +1,21 @@
+{
+	"name": "@insurance/server",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"dev": "tsx watch src/main.ts",
+		"start": "tsx src/main.ts"
+	},
+	"dependencies": {
+		"@effect/platform": "^0.97.0",
+		"@effect/platform-node": "^0.108.0",
+		"@effect/rpc": "^0.76.0",
+		"@effect/sql": "^0.52.0",
+		"@effect/sql-pg": "^0.53.0",
+		"@insurance/actor": "workspace:*",
+		"@insurance/contract": "workspace:*",
+		"@insurance/event-bus": "workspace:*",
+		"effect": "^3.22.0"
+	}
+}

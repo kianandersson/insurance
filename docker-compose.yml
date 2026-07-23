@@ -1,0 +1,30 @@
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: insurance
+      POSTGRES_PASSWORD: insurance
+      POSTGRES_DB: insurance
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U insurance -d insurance"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  server:
+    build: .
+    environment:
+      DATABASE_URL: postgres://insurance:insurance@postgres:5432/insurance
+      PORT: "3000"
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:
