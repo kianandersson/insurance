@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+
+# Coverage
+coverage/
+
+# OS
+.DS_Store
+
+# Local issue tracker (temporary)
+.scratch/
