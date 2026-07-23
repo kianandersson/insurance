@@ -3,8 +3,6 @@
 A general insurance intermediation platform. Its capabilities grow feature by feature; the
 first is working a sales lead from prospect to recommendation.
 
-Early-stage: no runnable app yet.
-
 ## Layout
 
 - `apps/` — deployable applications
