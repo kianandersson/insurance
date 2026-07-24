@@ -7,7 +7,7 @@ everyone, human or agent. What follows is only the agent-mechanical detail.
 
 ### Issue tracker
 
-Issues and specs live as local markdown files under `.scratch/<feature>/`. See `docs/agents/issue-tracker.md`.
+Tickets and specs live as GitHub issues, managed with the `gh` CLI. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 
