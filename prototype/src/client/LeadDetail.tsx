@@ -111,9 +111,20 @@ export function LeadDetail({ id }: { id: string }) {
           {lead.products.length > 0 && (
             <ul className="rows">
               {lead.products.map((p) => (
-                <li key={p.id} className="row">
-                  <strong>{p.name}</strong>
+                <li key={p.id} className="product">
+                  <div className="product-head">
+                    <strong>{p.name}</strong>
+                    <span className="price">{p.price}</span>
+                  </div>
                   <span className="muted small">{p.reason}</span>
+                  <div className="product-meta small">
+                    <span>
+                      <span className="meta-label">Dækning:</span> {p.coverage}
+                    </span>
+                    <span>
+                      <span className="meta-label">Selvrisiko:</span> {p.excess}
+                    </span>
+                  </div>
                 </li>
               ))}
             </ul>

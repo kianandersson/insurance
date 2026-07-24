@@ -16,6 +16,9 @@ export interface RecommendedProduct {
   id: string;
   name: string;
   reason: string;
+  coverage: string;
+  price: string;
+  excess: string;
 }
 
 export interface Utterance {

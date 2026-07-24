@@ -17,7 +17,10 @@ export interface AttributeValue {
 export interface RecommendedProduct {
   id: string;
   name: string;
-  reason: string;
+  reason: string; // why it surfaced — the trigger, in the customer's own terms
+  coverage: string; // what the policy covers, short
+  price: string; // indicative monthly premium, e.g. "499 kr./md."
+  excess: string; // selvrisiko, e.g. "5.000 kr."
 }
 
 export interface Utterance {

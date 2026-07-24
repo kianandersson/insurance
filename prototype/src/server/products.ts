@@ -23,16 +23,33 @@ function has(lead: Lead, substr: string): boolean {
   return lead.attributes.some((a) => a.key.toLowerCase().includes(substr));
 }
 
+// Danish-formatted number → integer ("184.000" → 184000, "148 m²" → 148). Dots are thousands
+// separators here, so strip everything that isn't a digit. Returns undefined when there's no number.
+function num(v: string | undefined): number | undefined {
+  if (!v) return undefined;
+  const n = Number(v.replace(/[^\d]/g, ""));
+  return Number.isFinite(n) && n > 0 ? n : undefined;
+}
+
+// Monthly premium, rounded to the nearest 10 kr so it reads like a real quote.
+function perMonth(dkk: number): string {
+  return `${(Math.round(dkk / 10) * 10).toLocaleString("da-DK")} kr./md.`;
+}
+
 interface ProductRule {
   id: string;
   name: string;
   applies: (lead: Lead) => boolean;
   reason: (lead: Lead) => string;
+  coverage: string; // what the policy covers
+  excess: string; // selvrisiko
+  price: (lead: Lead) => string; // indicative premium — scales off graph values where natural
 }
 
 // Hardcoded catalog. Rules key off the same trigger words the sources do (address / plate / cvr)
 // plus person/family attributes, so the golden path lights products up predictably. Array order is
-// display order.
+// display order. Prices scale off graph values (car value from DMR, m² from BBR, children, staff)
+// where it's natural, so a quote visibly firms up as sources land — otherwise an indicative "fra".
 const CATALOG: ProductRule[] = [
   {
     id: "bilforsikring",
@@ -44,6 +61,13 @@ const CATALOG: ProductRule[] = [
       const desc = car ? `${car}${year ? ` (${year})` : ""}` : "en bil";
       return `Kunden har ${desc} — tilbyd kasko oven på lovpligtig ansvar.`;
     },
+    coverage: "Kasko + lovpligtig ansvar, glasskade, vejhjælp",
+    excess: "5.000 kr.",
+    // ~4 %/år af bilens værdi, ellers en indikativ startpris.
+    price: (l) => {
+      const val = num(value(l, "vehicle.value_dkk"));
+      return val ? perMonth((val * 0.04) / 12) : "fra 449 kr./md.";
+    },
   },
   {
     id: "indboforsikring",
@@ -53,6 +77,9 @@ const CATALOG: ProductRule[] = [
       const type = value(l, "home.type");
       return `Kunden bor i ${type ?? "egen bolig"} — indbo er ikke dækket uden separat police.`;
     },
+    coverage: "Indbo, tyveri, brand & vandskade + privatansvar",
+    excess: "1.500 kr.",
+    price: () => "159 kr./md.",
   },
   {
     id: "husforsikring",
@@ -68,6 +95,13 @@ const CATALOG: ProductRule[] = [
       const bits = [m2 && `${m2} m²`, built && `opført ${built}`].filter(Boolean).join(", ");
       return `Ejerbolig${bits ? ` (${bits})` : ""} kræver en bygningsforsikring.`;
     },
+    coverage: "Bygningsskade, brand, storm, svamp & insekt, rørskade",
+    excess: "4.000 kr.",
+    // Skalerer med boligens areal (BBR), ellers indikativ.
+    price: (l) => {
+      const m2 = num(value(l, "home.size_m2"));
+      return m2 ? perMonth(250 + m2 * 1.2) : "fra 349 kr./md.";
+    },
   },
   {
     id: "boerneforsikring",
@@ -77,6 +111,10 @@ const CATALOG: ProductRule[] = [
       return kids !== undefined && !/^(0|nej|ingen|nul)/i.test(kids.trim());
     },
     reason: (l) => `Familien har børn (${value(l, "family.children")}) — børneulykke dækker fritid og skole.`,
+    coverage: "Barnets ulykke, invaliditet & kritisk sygdom",
+    excess: "0 kr.",
+    // 129 kr. pr. barn.
+    price: (l) => perMonth(129 * (num(value(l, "family.children")) ?? 1)),
   },
   {
     id: "ulykkesforsikring",
@@ -86,12 +124,18 @@ const CATALOG: ProductRule[] = [
       const age = value(l, "person.age");
       return `Personlig ulykkesforsikring anbefales${age ? ` (alder ${age})` : ""}.`;
     },
+    coverage: "Ulykke, méngodtgørelse, tandskade",
+    excess: "0 kr.",
+    price: () => "119 kr./md.",
   },
   {
     id: "dyreforsikring",
     name: "Dyreforsikring",
     applies: (l) => has(l, "pet"),
     reason: (l) => `Kunden har ${value(l, "pet.type") ?? "et kæledyr"} — syge-/ulykkesdækning for dyret.`,
+    coverage: "Dyrlæge ved sygdom & ulykke, medicin, operation",
+    excess: "1.000 kr.",
+    price: () => "289 kr./md.",
   },
   {
     id: "erhvervsforsikring",
@@ -107,6 +151,13 @@ const CATALOG: ProductRule[] = [
         .join(", ");
       return `Virksomhed${desc ? ` (${desc})` : ""} — erhvervsansvar og arbejdsskade.`;
     },
+    coverage: "Erhvervsansvar, arbejdsskade, produktansvar",
+    excess: "6.000 kr.",
+    // Skalerer med antal ansatte (CVR), ellers indikativ.
+    price: (l) => {
+      const emp = num(value(l, "company.employees"));
+      return emp ? perMonth(400 + emp * 90) : "fra 899 kr./md.";
+    },
   },
 ];
 
@@ -121,6 +172,9 @@ export function deriveProducts(leadId: string): void {
     id: rule.id,
     name: rule.name,
     reason: rule.reason(lead),
+    coverage: rule.coverage,
+    price: rule.price(lead),
+    excess: rule.excess,
   }));
 
   if (serialize(next) === serialize(lead.products)) return; // no change — no needless SSE churn
@@ -129,5 +183,8 @@ export function deriveProducts(leadId: string): void {
 }
 
 function serialize(products: RecommendedProduct[]): string {
-  return JSON.stringify(products.map((p) => [p.id, p.name, p.reason]));
+  // Include every rendered field so a firmed-up price (source value landed) also pushes an update.
+  return JSON.stringify(
+    products.map((p) => [p.id, p.name, p.reason, p.coverage, p.price, p.excess]),
+  );
 }
