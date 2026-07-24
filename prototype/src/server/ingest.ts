@@ -13,6 +13,7 @@ import {
   type ExtractionContext,
   extractAttributes,
 } from "./extraction.ts";
+import { deriveProducts } from "./products.ts";
 import { maybeEnrich } from "./sources.ts";
 import { getLead, type Lead, touchLead, type Utterance } from "./store.ts";
 
@@ -62,6 +63,8 @@ async function runExtraction(leadId: string, extract: Extractor): Promise<void> 
     if (mergeAiHeard(fresh, extracted)) touchLead(fresh);
     // A landed trigger value (address / plate / CVR) fires the fake source lookups (ticket 06).
     maybeEnrich(leadId);
+    // Re-derive recommended products from the (now possibly richer) graph (ticket 07).
+    deriveProducts(leadId);
   } catch (err) {
     // A failed extraction must never kill the call — the utterance still stands in the transcript.
     console.error(

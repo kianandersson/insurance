@@ -7,6 +7,7 @@
 // Deliberately keyed off the *presence* of a trigger key, not its exact (lossy) value — a garbled
 // Danish address still fires the property lookup, so the demo can't be broken by transcription WER.
 
+import { deriveProducts } from "./products.ts";
 import { getLead, touchLead } from "./store.ts";
 
 interface SourceFact {
@@ -105,5 +106,9 @@ function enrich(leadId: string, enricher: Enricher): void {
     });
     changed = true;
   }
-  if (changed) touchLead(lead); // Sources panel updates live via a single SSE push
+  if (changed) {
+    touchLead(lead); // Sources panel updates live via a single SSE push
+    // Source facts (make/model, home.type, company.*) can unlock products too (ticket 07).
+    deriveProducts(leadId);
+  }
 }
