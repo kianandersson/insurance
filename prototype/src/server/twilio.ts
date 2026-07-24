@@ -12,21 +12,6 @@
 // line from a typed one — exactly the seam ticket 05 was built against.
 
 import twilio from "twilio";
-import type { Lead } from "./store.ts";
-
-const API_BASE = "https://api.twilio.com/2010-04-01";
-
-function creds() {
-  const sid = process.env.TWILIO_ACCOUNT_SID;
-  const token = process.env.TWILIO_AUTH_TOKEN;
-  const from = process.env.TWILIO_FROM_NUMBER;
-  const base = process.env.PUBLIC_BASE_URL;
-  if (!sid || !token || !from) {
-    throw new Error("Twilio env not configured (need TWILIO_ACCOUNT_SID/AUTH_TOKEN/FROM_NUMBER)");
-  }
-  if (!base) throw new Error("PUBLIC_BASE_URL not set — Twilio needs a public URL for its webhooks");
-  return { sid, token, from, base: base.replace(/\/$/, "") };
-}
 
 // Light E.164 nudge: trust a proper +country number; prefix +45 for a bare 8-digit Danish mobile,
 // and turn a 00-prefixed international number into +. Anything else is passed through untouched.
@@ -36,31 +21,6 @@ export function toE164(raw: string): string {
   if (s.startsWith("00")) return `+${s.slice(2)}`;
   if (/^\d{8}$/.test(s)) return `+45${s}`;
   return s;
-}
-
-// Place the real outbound call. Twilio dials `To`; when the lead answers, Twilio fetches our
-// /twiml/voice for the TwiML that starts transcription and holds the line open.
-export async function placeCall(lead: Lead): Promise<{ sid: string }> {
-  const { sid, token, from, base } = creds();
-  const body = new URLSearchParams({
-    To: toE164(lead.phone),
-    From: from,
-    Url: `${base}/twiml/voice?leadId=${encodeURIComponent(lead.id)}`,
-  });
-  const res = await fetch(`${API_BASE}/Accounts/${sid}/Calls.json`, {
-    method: "POST",
-    headers: {
-      authorization: `Basic ${btoa(`${sid}:${token}`)}`,
-      "content-type": "application/x-www-form-urlencoded",
-    },
-    body,
-  });
-  if (!res.ok) {
-    const detail = await res.text().catch(() => "");
-    throw new Error(`Twilio call rejected (${res.status}): ${detail.slice(0, 300)}`);
-  }
-  const data = (await res.json()) as { sid: string };
-  return { sid: data.sid };
 }
 
 // The TwiML Twilio fetches when the lead answers. Solo topology: start transcribing the
@@ -87,9 +47,11 @@ export function voiceTwiml(leadId: string, base: string): string {
 // ---------------------------------------------------------------------------
 // Ticket 10 — browser softphone (topology redraw).
 //
-// The solo functions above (placeCall / voiceTwiml) are now DORMANT: the demo no longer dials the
-// lead's own phone and plays a robot greeting. Instead the seller's browser is a call participant
-// (Twilio Voice JS SDK) and Twilio bridges it to the customer's number. Two pieces live here:
+// The solo REST dial-out (placeCall, which needed the Account Auth Token) has been removed: the demo
+// no longer dials the lead's own phone and plays a robot greeting. Instead the seller's browser is a
+// call participant (Twilio Voice JS SDK) and Twilio bridges it to the customer's number. The
+// voiceTwiml / parseTranscription pair above stays for the solo transcription webhook. Two pieces
+// live here:
 //   1. mintVoiceToken — the signed AccessToken the browser Device needs to connect.
 //   2. outgoingTwiml — what Twilio fetches for that browser leg: <Dial> the customer, no <Say>.
 // ---------------------------------------------------------------------------

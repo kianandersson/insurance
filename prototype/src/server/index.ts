@@ -6,15 +6,7 @@ import { join, normalize } from "node:path";
 import { checkPassword, clearCookie, isAuthed, mintCookie } from "./auth.ts";
 import { ingestUtterance } from "./ingest.ts";
 import { createLead, getLead, listLeads, subscribe, type StoreEvent } from "./store.ts";
-import {
-  mintVoiceToken,
-  outgoingTwiml,
-  parseTranscription,
-  placeCall,
-  toE164,
-  voiceTwiml,
-} from "./twilio.ts";
-import { ensureVoiceProvisioned } from "./voice-setup.ts";
+import { mintVoiceToken, outgoingTwiml, parseTranscription, voiceTwiml } from "./twilio.ts";
 
 const PORT = Number(process.env.PORT ?? 3000);
 const DIST = join(import.meta.dir, "../../dist");
@@ -95,28 +87,6 @@ async function handleApi(req: Request, pathname: string): Promise<Response> {
     }
   }
 
-  // Place the real outbound Twilio call to this lead (ticket 04 — DORMANT solo path, superseded by
-  // the ticket 10 softphone). Kept behind the API but no longer wired to the Call button.
-  const callMatch = pathname.match(/^\/api\/leads\/([^/]+)\/call$/);
-  if (callMatch && req.method === "POST") {
-    const lead = getLead(callMatch[1]);
-    if (!lead) return json({ error: "not found" }, { status: 404 });
-    try {
-      const { sid } = await placeCall(lead);
-      // A system line in the transcript so any viewer sees the call was placed (skipped by
-      // extraction — see ingest.ts). The real speech arrives via the transcription webhook.
-      ingestUtterance(lead.id, {
-        speaker: "system",
-        text: `Call started to ${lead.name} (${toE164(lead.phone)}).`,
-      });
-      return json({ ok: true, callSid: sid });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "call failed";
-      console.error(`[call] lead ${lead.id}:`, message);
-      return json({ ok: false, error: message }, { status: 502 });
-    }
-  }
-
   return json({ error: "not found" }, { status: 404 });
 }
 
@@ -166,18 +136,6 @@ function sseStream(): Response {
       connection: "keep-alive",
     },
   });
-}
-
-// Self-provision the softphone's Twilio-side records (API Key + TwiML App) from the creds we
-// already hold, so the human never touches the Twilio console. A failure here (Twilio down, missing
-// base creds) is non-fatal: the rest of the demo still runs; /api/voice-token just 500s until fixed.
-try {
-  await ensureVoiceProvisioned();
-} catch (err) {
-  console.warn(
-    "[voice-setup] provisioning failed — /api/voice-token will 500 until resolved:",
-    err instanceof Error ? err.message : err,
-  );
 }
 
 const server = Bun.serve({
