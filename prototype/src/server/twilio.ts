@@ -66,12 +66,17 @@ export async function placeCall(lead: Lead): Promise<{ sid: string }> {
 // customer's own inbound track (Deepgram Nova-3, Danish), greet them, then hold the line with a
 // 300s pause (the hard cap). Transcribing inbound_track ONLY keeps our spoken <Say> greeting
 // (which is outbound audio) out of the transcript.
+//
+// enableProviderData="true" adds per-word confidence + timing to the Final:true payloads — the one
+// source-side tuning knob that actually helps Danish narrowband (ticket 08: keyterm priming is NOT
+// reachable through this verb for the Deepgram engine, so there is no source-side fix for mangled
+// proper nouns; that's carried by the extraction and the demo script). Stay monolingual da-DK.
 export function voiceTwiml(leadId: string, base: string): string {
   const cb = `${base.replace(/\/$/, "")}/twilio/transcription?leadId=${encodeURIComponent(leadId)}`;
   return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Start>
-    <Transcription transcriptionEngine="deepgram" speechModel="nova-3" languageCode="da-DK" track="inbound_track" profanityFilter="false" statusCallbackUrl="${cb}" />
+    <Transcription transcriptionEngine="deepgram" speechModel="nova-3" languageCode="da-DK" track="inbound_track" profanityFilter="false" enableProviderData="true" statusCallbackUrl="${cb}" />
   </Start>
   <Say voice="Polly.Naja" language="da-DK">Du er forbundet. Fortæl frit om dig selv, dit hjem, din bil og din familie, så udfylder systemet oplysningerne mens du taler.</Say>
   <Pause length="300" />

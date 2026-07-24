@@ -19,6 +19,7 @@ test("voiceTwiml starts Deepgram Danish transcription on the inbound track and h
   expect(twiml).toContain('speechModel="nova-3"');
   expect(twiml).toContain('languageCode="da-DK"');
   expect(twiml).toContain('track="inbound_track"'); // solo: only the customer's voice
+  expect(twiml).toContain('enableProviderData="true"'); // per-word confidence (ticket 08)
   // Webhook URL carries the leadId and the trailing slash on the base is not doubled.
   expect(twiml).toContain(
     'statusCallbackUrl="https://demo.example.com/twilio/transcription?leadId=lead-123"',
