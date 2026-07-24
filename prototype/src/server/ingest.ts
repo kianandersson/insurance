@@ -8,11 +8,19 @@
 //   2. Fire the AI extraction over the whole conversation and merge any newly-stated attributes
 //      onto the graph as not-yet-verified "AI-heard" values — a beat later, live.
 
-import { extractAttributes, type ExtractedAttribute } from "./extraction.ts";
+import {
+  type ExtractedAttribute,
+  type ExtractionContext,
+  extractAttributes,
+} from "./extraction.ts";
 import { getLead, type Lead, touchLead, type Utterance } from "./store.ts";
 
-// Injectable so the seam can be tested without a live model (see ingest.test.ts).
-export type Extractor = (utterances: Utterance[]) => Promise<ExtractedAttribute[]>;
+// Injectable so the seam can be tested without a live model (see ingest.test.ts). Context is
+// optional so a stub extractor can ignore it.
+export type Extractor = (
+  utterances: Utterance[],
+  context?: ExtractionContext,
+) => Promise<ExtractedAttribute[]>;
 
 export interface IngestResult {
   utterance?: Utterance;
@@ -46,7 +54,7 @@ async function runExtraction(leadId: string, extract: Extractor): Promise<void> 
   const lead = getLead(leadId);
   if (!lead) return;
   try {
-    const extracted = await extract(lead.utterances);
+    const extracted = await extract(lead.utterances, { name: lead.name, segment: lead.segment });
     // Re-read: the lead may have moved on while we were awaiting the model.
     const fresh = getLead(leadId);
     if (!fresh) return;
