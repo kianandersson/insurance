@@ -39,6 +39,8 @@ A change is ready to merge only when all of the following hold:
 ### Interface design
 
 - Read the surrounding code first; reuse what exists and match its style rather than reinventing it.
+- Build only what the task needs. No speculative generality — no variants, parameters, or fields
+  for futures the change doesn't use; the next change adds them when it actually needs them.
 - Prefer deep modules: a small interface hiding a deep implementation.
 - Design for testability: accept dependencies rather than constructing them, and return results
   rather than producing side effects.
