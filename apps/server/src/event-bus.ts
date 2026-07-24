@@ -1,20 +1,12 @@
-import { Context, Effect, Layer, PubSub, Schema, Stream } from "effect";
-
-export const HeartbeatEmitted = Schema.TaggedStruct("HeartbeatEmitted", {
-	message: Schema.String,
-	actor: Schema.String,
-	occurredAt: Schema.Date,
-});
-
-export const DomainEvent = Schema.Union(HeartbeatEmitted);
-export type DomainEvent = typeof DomainEvent.Type;
+import type { DomainEvent } from "@insurance/events";
+import { Context, Effect, Layer, PubSub, Stream } from "effect";
 
 export interface EventBusService {
 	readonly publish: (event: DomainEvent) => Effect.Effect<void>;
 	readonly events: Stream.Stream<DomainEvent>;
 }
 
-export class EventBus extends Context.Tag("@insurance/event-bus/EventBus")<
+export class EventBus extends Context.Tag("@insurance/server/EventBus")<
 	EventBus,
 	EventBusService
 >() {}

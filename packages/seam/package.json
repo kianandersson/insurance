@@ -1,5 +1,5 @@
 {
-	"name": "@insurance/event-bus",
+	"name": "@insurance/seam",
 	"version": "0.0.0",
 	"private": true,
 	"type": "module",
@@ -7,6 +7,9 @@
 		".": "./src/index.ts"
 	},
 	"dependencies": {
+		"@effect/platform": "^0.97.0",
+		"@effect/rpc": "^0.76.0",
+		"@insurance/events": "workspace:*",
 		"effect": "^3.22.0"
 	}
 }

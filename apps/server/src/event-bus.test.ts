@@ -1,11 +1,12 @@
+import { HeartbeatEmitted, User } from "@insurance/events";
 import { Chunk, Effect, Fiber, Stream } from "effect";
 import { describe, expect, it } from "vitest";
-import { EventBus, EventBusLive, HeartbeatEmitted } from "./index.js";
+import { EventBus, EventBusLive } from "./event-bus.js";
 
 const event = (message: string) =>
 	HeartbeatEmitted.make({
 		message,
-		actor: "system",
+		actor: User.make({ id: "system" }),
 		occurredAt: new Date("2026-07-23T00:00:00.000Z"),
 	});
 

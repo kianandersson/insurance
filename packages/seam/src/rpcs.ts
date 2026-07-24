@@ -1,5 +1,4 @@
 import { Rpc, RpcGroup } from "@effect/rpc";
-import { DomainEvent } from "@insurance/event-bus";
 import { Schema } from "effect";
 import { ActorMiddleware } from "./middleware.js";
 
@@ -10,21 +9,22 @@ export const HealthStatus = Schema.Struct({
 });
 export type HealthStatus = typeof HealthStatus.Type;
 
-export const PublishResult = Schema.Struct({
-	isPublished: Schema.Boolean,
+export const HeartbeatProjection = Schema.Struct({
+	count: Schema.Number,
+	lastMessage: Schema.NullOr(Schema.String),
+	lastActor: Schema.NullOr(Schema.String),
 });
-export type PublishResult = typeof PublishResult.Type;
+export type HeartbeatProjection = typeof HeartbeatProjection.Type;
 
 export class SkeletonRpcs extends RpcGroup.make(
 	Rpc.make("Health", {
 		success: HealthStatus,
 	}),
-	Rpc.make("Publish", {
-		success: PublishResult,
+	Rpc.make("Announce", {
 		payload: { message: Schema.String },
 	}),
 	Rpc.make("Subscribe", {
-		success: DomainEvent,
+		success: HeartbeatProjection,
 		stream: true,
 	}),
 ).middleware(ActorMiddleware) {}

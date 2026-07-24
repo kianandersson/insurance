@@ -1,7 +1,7 @@
-import { createServer } from "node:net";
+import { connect, createServer } from "node:net";
 import { RpcClient } from "@effect/rpc";
-import { layerProtocol, SkeletonRpcs } from "@insurance/contract";
-import { Chunk, Effect, Fiber, Layer, Schedule, Stream } from "effect";
+import { layerProtocol, SkeletonRpcs } from "@insurance/seam";
+import { Chunk, Effect, Either, Fiber, Layer, Stream } from "effect";
 import { describe, expect, it } from "vitest";
 import { makeServer } from "./app.js";
 import { Database } from "./database.js";
@@ -22,9 +22,22 @@ const freePort = () =>
 		});
 	});
 
-const retryUntilUp = Schedule.recurs(100).pipe(
-	Schedule.addDelay(() => "20 millis"),
-);
+const waitForPort = (port: number) =>
+	new Promise<void>((resolve, reject) => {
+		const attempt = (remaining: number) => {
+			const socket = connect(port, "localhost");
+			socket.once("connect", () => {
+				socket.end();
+				resolve();
+			});
+			socket.once("error", () => {
+				socket.destroy();
+				if (remaining <= 0) reject(new Error("server never came up"));
+				else setTimeout(() => attempt(remaining - 1), 20);
+			});
+		};
+		attempt(100);
+	});
 
 const withServer = <A, E>(use: (url: string) => Effect.Effect<A, E>) =>
 	Effect.gen(function* () {
@@ -32,33 +45,33 @@ const withServer = <A, E>(use: (url: string) => Effect.Effect<A, E>) =>
 		yield* Effect.forkScoped(
 			Layer.launch(makeServer({ port, database: DatabaseUp })),
 		);
+		yield* Effect.promise(() => waitForPort(port));
 		return yield* use(`http://localhost:${port}/rpc`);
 	}).pipe(Effect.scoped);
 
 const exercise = Effect.gen(function* () {
 	const client = yield* RpcClient.make(SkeletonRpcs);
 
-	// Retry the first call until the freshly forked server is listening.
-	const health = yield* client.Health().pipe(Effect.retry(retryUntilUp));
+	const health = yield* client.Health();
 
 	const subscriber = yield* Effect.fork(
-		client.Subscribe().pipe(Stream.take(2), Stream.runCollect),
+		client.Subscribe().pipe(Stream.take(3), Stream.runCollect),
 	);
 	yield* Effect.sleep("200 millis");
 
-	yield* client.Publish({ message: "first" });
-	yield* client.Publish({ message: "second" });
+	yield* client.Announce({ message: "first" });
+	yield* client.Announce({ message: "second" });
 
-	const events = Chunk.toReadonlyArray(yield* Fiber.join(subscriber));
-	return { health, events };
+	const snapshots = Chunk.toReadonlyArray(yield* Fiber.join(subscriber));
+	return { health, snapshots };
 });
 
 describe("the internal Effect seam", () => {
-	it("round-trips a unary call and pushes live stream updates to a subscriber", async () => {
-		const { health, events } = await Effect.runPromise(
+	it("round-trips a command and streams the folded projection to a subscriber", async () => {
+		const { health, snapshots } = await Effect.runPromise(
 			withServer((url) =>
 				exercise.pipe(
-					Effect.provide(layerProtocol({ url, actorId: "seller-1" })),
+					Effect.provide(layerProtocol({ url, actorId: "user-1" })),
 					Effect.scoped,
 				),
 			),
@@ -66,27 +79,31 @@ describe("the internal Effect seam", () => {
 
 		expect(health.status).toBe("ok");
 		expect(health.database).toBe("up");
-		expect(health.actor).toBe("seller:seller-1");
+		expect(health.actor).toBe("user-1");
 
-		expect(events.map((event) => event.message)).toEqual(["first", "second"]);
-		expect(events.every((event) => event.actor === "seller:seller-1")).toBe(
-			true,
-		);
+		expect(snapshots.map((snapshot) => snapshot.count)).toEqual([0, 1, 2]);
+		expect(snapshots.at(-1)).toEqual({
+			count: 2,
+			lastMessage: "second",
+			lastActor: "user-1",
+		});
 	});
 
-	it("resolves a stub actor at the edge when no identity is supplied", async () => {
-		const health = await Effect.runPromise(
+	it("fails closed when no actor identity is supplied at the edge", async () => {
+		const result = await Effect.runPromise(
 			withServer((url) =>
 				RpcClient.make(SkeletonRpcs).pipe(
-					Effect.flatMap((client) =>
-						client.Health().pipe(Effect.retry(retryUntilUp)),
-					),
+					Effect.flatMap((client) => client.Health()),
 					Effect.provide(layerProtocol({ url })),
 					Effect.scoped,
+					Effect.either,
 				),
 			),
 		);
 
-		expect(health.actor).toBe("seller:stub-seller");
+		expect(Either.isLeft(result)).toBe(true);
+		if (Either.isLeft(result)) {
+			expect(result.left._tag).toBe("ActorUnresolved");
+		}
 	});
 });

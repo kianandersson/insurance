@@ -1,12 +1,14 @@
-import { actorRef, CurrentActor } from "@insurance/actor";
-import { HealthStatus, PublishResult, SkeletonRpcs } from "@insurance/contract";
-import { EventBus, HeartbeatEmitted } from "@insurance/event-bus";
+import { HeartbeatEmitted } from "@insurance/events";
+import { CurrentActor, HealthStatus, SkeletonRpcs } from "@insurance/seam";
 import { Effect } from "effect";
 import { Database } from "./database.js";
+import { EventBus } from "./event-bus.js";
+import { Projection } from "./projection.js";
 
 export const SkeletonHandlersLive = SkeletonRpcs.toLayer(
 	Effect.gen(function* () {
 		const bus = yield* EventBus;
+		const projection = yield* Projection;
 		const database = yield* Database;
 
 		return {
@@ -17,24 +19,23 @@ export const SkeletonHandlersLive = SkeletonRpcs.toLayer(
 					return HealthStatus.make({
 						status: "ok",
 						database: isReachable ? "up" : "down",
-						actor: actorRef(actor),
+						actor: actor.id,
 					});
 				}),
 
-			Publish: ({ message }) =>
+			Announce: ({ message }) =>
 				Effect.gen(function* () {
 					const actor = yield* CurrentActor;
 					yield* bus.publish(
 						HeartbeatEmitted.make({
 							message,
-							actor: actorRef(actor),
+							actor,
 							occurredAt: new Date(),
 						}),
 					);
-					return PublishResult.make({ isPublished: true });
 				}),
 
-			Subscribe: () => bus.events,
+			Subscribe: () => projection.changes,
 		};
 	}),
 );

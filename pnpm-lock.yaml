@@ -32,9 +32,9 @@ importers:
       '@effect/rpc':
         specifier: ^0.76.0
         version: 0.76.0(@effect/platform@0.97.0(effect@3.22.0))(effect@3.22.0)
-      '@insurance/contract':
+      '@insurance/seam':
         specifier: workspace:*
-        version: link:../../packages/contract
+        version: link:../../packages/seam
       effect:
         specifier: ^3.22.0
         version: 3.22.0
@@ -56,26 +56,23 @@ importers:
       '@effect/sql-pg':
         specifier: ^0.53.0
         version: 0.53.0(@effect/experimental@0.61.0(@effect/platform@0.97.0(effect@3.22.0))(effect@3.22.0))(@effect/platform@0.97.0(effect@3.22.0))(@effect/sql@0.52.0(@effect/experimental@0.61.0(@effect/platform@0.97.0(effect@3.22.0))(effect@3.22.0))(@effect/platform@0.97.0(effect@3.22.0))(effect@3.22.0))(effect@3.22.0)
-      '@insurance/actor':
+      '@insurance/events':
         specifier: workspace:*
-        version: link:../../packages/actor
-      '@insurance/contract':
+        version: link:../../packages/events
+      '@insurance/seam':
         specifier: workspace:*
-        version: link:../../packages/contract
-      '@insurance/event-bus':
-        specifier: workspace:*
-        version: link:../../packages/event-bus
+        version: link:../../packages/seam
       effect:
         specifier: ^3.22.0
         version: 3.22.0
 
-  packages/actor:
+  packages/events:
     dependencies:
       effect:
         specifier: ^3.22.0
         version: 3.22.0
 
-  packages/contract:
+  packages/seam:
     dependencies:
       '@effect/platform':
         specifier: ^0.97.0
@@ -83,18 +80,9 @@ importers:
       '@effect/rpc':
         specifier: ^0.76.0
         version: 0.76.0(@effect/platform@0.97.0(effect@3.22.0))(effect@3.22.0)
-      '@insurance/actor':
+      '@insurance/events':
         specifier: workspace:*
-        version: link:../actor
-      '@insurance/event-bus':
-        specifier: workspace:*
-        version: link:../event-bus
-      effect:
-        specifier: ^3.22.0
-        version: 3.22.0
-
-  packages/event-bus:
-    dependencies:
+        version: link:../events
       effect:
         specifier: ^3.22.0
         version: 3.22.0
