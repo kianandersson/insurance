@@ -90,11 +90,20 @@ export function LeadDetail({ id }: { id: string }) {
 
         <Panel title="Sources" empty="No source enrichment yet.">
           {sourceNames.length > 0 && (
-            <ul className="rows">
-              {fromSources.map((a) => (
-                <AttributeRow key={`${a.key}-${a.at}`} attr={a} showSource />
+            <div className="source-groups">
+              {sourceNames.map((name) => (
+                <div key={name} className="source-group">
+                  <h4 className="source-name">{name}</h4>
+                  <ul className="rows">
+                    {fromSources
+                      .filter((a) => (a.sourceName ?? "Source") === name)
+                      .map((a) => (
+                        <AttributeRow key={`${a.key}-${a.at}`} attr={a} />
+                      ))}
+                  </ul>
+                </div>
               ))}
-            </ul>
+            </div>
           )}
         </Panel>
 
