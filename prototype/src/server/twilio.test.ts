@@ -4,7 +4,7 @@
 // (see ticket 04). Run: `bun test`.
 
 import { expect, test } from "bun:test";
-import { parseTranscription, toE164, voiceTwiml } from "./twilio.ts";
+import { outgoingTwiml, parseTranscription, toE164, voiceTwiml } from "./twilio.ts";
 
 test("toE164 nudges Danish numbers to E.164 and trusts explicit ones", () => {
   expect(toE164("12 34 56 78")).toBe("+4512345678"); // bare 8-digit DK mobile
@@ -27,11 +27,32 @@ test("voiceTwiml starts Deepgram Danish transcription on the inbound track and h
   expect(twiml).toContain('<Pause length="300" />'); // the 5-min hard cap in solo topology
 });
 
+test("outgoingTwiml bridges the browser to the customer and starts Danish transcription on both tracks", () => {
+  const twiml = outgoingTwiml("12 34 56 78", "lead-123", "+4593703142", "https://demo.example.com/");
+  // Transcription is started (asynchronously) on the parent call, around the <Dial>.
+  expect(twiml).toContain("<Start>");
+  expect(twiml).toContain('transcriptionEngine="deepgram"');
+  expect(twiml).toContain('speechModel="nova-3"');
+  expect(twiml).toContain('languageCode="da-DK"');
+  expect(twiml).toContain('track="both_tracks"'); // bridged: BOTH seller and customer
+  expect(twiml).toContain('enableProviderData="true"'); // per-word confidence (ticket 08)
+  expect(twiml).toContain(
+    'statusCallbackUrl="https://demo.example.com/twilio/transcription?leadId=lead-123"',
+  );
+  // The bridge itself: dial the customer's normalized number, no robot <Say>, hard 5-min cap.
+  expect(twiml).toContain('callerId="+4593703142"');
+  expect(twiml).toContain('answerOnBridge="true"');
+  expect(twiml).toContain('timeLimit="300"');
+  expect(twiml).toContain("<Number>+4512345678</Number>");
+  expect(twiml).not.toContain("<Say");
+});
+
 test("parseTranscription lifts a Final:true event onto the seam and drops non-content events", () => {
+  // Bridged topology: outbound_track is the dialed CUSTOMER (played back to the browser).
   const finalEvent = new URLSearchParams({
     TranscriptionEvent: "transcription-content",
     Final: "true",
-    Track: "inbound_track",
+    Track: "outbound_track",
     SequenceId: "3",
     TranscriptionData: JSON.stringify({
       transcript: "jeg bor i et rækkehus i Aarhus",
@@ -41,7 +62,7 @@ test("parseTranscription lifts a Final:true event onto the seam and drops non-co
   const ev = parseTranscription(finalEvent);
   expect(ev.isContent).toBe(true);
   expect(ev.isFinal).toBe(true);
-  expect(ev.speaker).toBe("customer"); // inbound_track → customer
+  expect(ev.speaker).toBe("customer"); // outbound_track → customer (bridged)
   expect(ev.sequenceId).toBe("3");
   expect(ev.transcript).toBe("jeg bor i et rækkehus i Aarhus");
   expect(ev.confidence).toBeCloseTo(0.94);
@@ -50,11 +71,11 @@ test("parseTranscription lifts a Final:true event onto the seam and drops non-co
   const started = new URLSearchParams({ TranscriptionEvent: "transcription-started" });
   expect(parseTranscription(started).isContent).toBe(false);
 
-  // The outbound (seller) track maps to the agent speaker, ready for a bridged topology.
+  // Bridged topology: inbound_track is the SELLER's browser mic → the agent speaker.
   const seller = new URLSearchParams({
     TranscriptionEvent: "transcription-content",
     Final: "true",
-    Track: "outbound_track",
+    Track: "inbound_track",
     SequenceId: "4",
     TranscriptionData: JSON.stringify({ transcript: "godt, det noterer jeg" }),
   });

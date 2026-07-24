@@ -82,10 +82,20 @@ export function mintVoiceToken(identity: string): string {
 // connect()). Bridge the seller's browser to the customer's real number: no <Say>, no robot voice.
 // answerOnBridge="true" gives the seller real ringback and defers the bridge until the customer
 // actually answers. timeLimit="300" is the hard 5-min cap (back on <Dial>, where it belongs).
-// leadId rides through so ticket 11 can hang <Start><Transcription> here to refill the graph.
-export function outgoingTwiml(to: string, _leadId: string, from: string): string {
+//
+// Ticket 11 — live transcription on the bridged call. <Start><Transcription> runs asynchronously on
+// the PARENT call (browser ↔ Twilio) and does NOT block, so <Dial> proceeds normally underneath it.
+// track="both_tracks" so BOTH speakers land in the transcript (the two legs genuinely alternate
+// now) — inbound_track is the seller's browser mic, outbound_track is the customer's dialed leg
+// played back (parseTranscription maps that). enableProviderData="true" keeps per-word confidence
+// (ticket 08). The leadId that rode in from connect() addresses the webhook back to this lead.
+export function outgoingTwiml(to: string, leadId: string, from: string, base: string): string {
+  const cb = `${base.replace(/\/$/, "")}/twilio/transcription?leadId=${encodeURIComponent(leadId)}`;
   return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
+  <Start>
+    <Transcription transcriptionEngine="deepgram" speechModel="nova-3" languageCode="da-DK" track="both_tracks" profanityFilter="false" enableProviderData="true" statusCallbackUrl="${cb}" />
+  </Start>
   <Dial callerId="${from}" answerOnBridge="true" timeLimit="300">
     <Number>${toE164(to)}</Number>
   </Dial>
@@ -123,8 +133,16 @@ export function parseTranscription(form: URLSearchParams): TranscriptionEvent {
     }
   }
 
-  // Track → speaker. In solo topology only inbound_track is transcribed (the customer); the
-  // outbound_track label is kept for the day this grows a bridged seller leg.
-  const speaker = track === "outbound_track" ? "agent" : "customer";
+  // Track → speaker (BRIDGED softphone topology — ticket 11; the day the solo comment flagged has
+  // arrived). Transcription runs on the PARENT call (browser ↔ Twilio), so the tracks mean the
+  // OPPOSITE of the dead solo shape: inbound_track is audio INTO Twilio from the browser = the
+  // SELLER's mic (agent); outbound_track is audio played OUT to the browser = the CUSTOMER's dialed
+  // leg. Made explicit rather than a bare ternary so the two live cases are legible.
+  let speaker: "customer" | "agent";
+  if (track === "inbound_track") {
+    speaker = "agent"; // seller, in the browser
+  } else {
+    speaker = "customer"; // outbound_track — the dialed customer (and the safe default)
+  }
   return { isContent, isFinal, speaker, sequenceId, transcript, confidence };
 }

@@ -158,7 +158,8 @@ const server = Bun.serve({
 
     // The browser softphone's TwiML (ticket 10). When the seller's Device calls connect(), Twilio
     // fetches this (via the TwiML App) with the `To` + `leadId` params the Device passed. We bridge
-    // the browser to the customer's number — no robot voice. (Ticket 11 hangs transcription here.)
+    // the browser to the customer's number — no robot voice — and (ticket 11) start live
+    // transcription on both tracks, so the graph refills from the two-party conversation.
     if (pathname === "/twiml/outgoing") {
       const form = new URLSearchParams(
         req.method === "POST" ? await req.text() : url.searchParams.toString(),
@@ -166,7 +167,8 @@ const server = Bun.serve({
       const to = form.get("To") ?? "";
       const leadId = form.get("leadId") ?? "";
       const from = process.env.TWILIO_FROM_NUMBER ?? "";
-      return new Response(outgoingTwiml(to, leadId, from), {
+      const base = process.env.PUBLIC_BASE_URL ?? `https://${req.headers.get("host") ?? ""}`;
+      return new Response(outgoingTwiml(to, leadId, from, base), {
         headers: { "content-type": "text/xml" },
       });
     }
