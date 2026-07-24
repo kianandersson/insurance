@@ -49,7 +49,8 @@ function Login({ onSuccess }: { onSuccess: () => void }) {
   return (
     <div className="center">
       <form className="card login" onSubmit={submit}>
-        <h1>Live Call Demo</h1>
+        <span className="eyebrow">Live call demo</span>
+        <h1>Watch the AI work the call.</h1>
         <p className="muted">Enter the access code from your invite.</p>
         <input
           type="password"
@@ -140,13 +141,11 @@ function Home() {
                   className="leadrow"
                   onClick={() => navigate(`/leads/${l.id}`)}
                 >
-                  <span className="lead-id">
+                  <span className="lead-main">
                     <span className="lead-name">{leadDisplayName(l)}</span>
-                    <span className="lead-sub">
-                      {l.phone}
-                      {l.segment ? ` · ${l.segment}` : ""}
-                    </span>
+                    <span className="lead-phone">{l.phone}</span>
                   </span>
+                  {l.segment && <span className="lead-seg">{l.segment}</span>}
                   <span className="chevron" aria-hidden="true">
                     ›
                   </span>
