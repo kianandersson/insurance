@@ -89,92 +89,124 @@ export function LeadDetail({ id }: { id: string }) {
 
   return (
     <div className="detail">
-      <div className="detail-head">
-        <button type="button" className="link" onClick={() => navigate("/")}>
-          ← Leads
-        </button>
-        <div>
-          <h1>{leadDisplayName(lead)}</h1>
-          <p className="muted">
-            {lead.phone}
-            {lead.segment ? ` · ${lead.segment}` : ""}
-          </p>
+      <button type="button" className="link detail-back" onClick={() => navigate("/")}>
+        ← Leads
+      </button>
+
+      <div className="detail-layout">
+        {/* Hero — calm left column: lead identity + the call control. */}
+        <aside className="hero">
+          <div className="hero-id">
+            <h1>{leadDisplayName(lead)}</h1>
+            <p className="hero-sub">
+              {lead.phone}
+              {lead.segment ? ` · ${lead.segment}` : ""}
+            </p>
+          </div>
+
+          {/* Call control — places the real outbound Twilio call (tickets 04/10). */}
+          <CallBar lead={lead} />
+
+          {/* Utterance composer — feeds the same seam the live call does. A debug-only test
+              affordance (see useDebug): hidden in the real demo, revealed with ?debug=1 to
+              exercise extraction without a call. */}
+          {debug && <Composer leadId={lead.id} />}
+        </aside>
+
+        {/* Denser right column — the four panels fill live via SSE. */}
+        <div className="panels">
+          <Panel title="Attributes" count={heard.length}
+            empty="Nothing heard yet — start a call and the AI fills this in.">
+            {heard.length > 0 && (
+              <ul className="rows">
+                {heard.map((a) => (
+                  <AttributeRow key={`${a.key}-${a.at}`} attr={a} />
+                ))}
+              </ul>
+            )}
+          </Panel>
+
+          <Panel title="Sources" count={sourceNames.length} empty="No source enrichment yet.">
+            {sourceNames.length > 0 && (
+              <div className="source-groups">
+                {sourceNames.map((name) => (
+                  <div key={name} className="source-group">
+                    <h4 className="source-name">{name}</h4>
+                    <ul className="rows">
+                      {fromSources
+                        .filter((a) => (a.sourceName ?? "Source") === name)
+                        .map((a) => (
+                          <AttributeRow key={`${a.key}-${a.at}`} attr={a} showSource />
+                        ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Panel>
+
+          <Panel title="Recommended products" count={lead.products.length} className="span-2"
+            empty="Recommendations appear as the graph fills.">
+            {lead.products.length > 0 && (
+              <>
+                <CoverageGauge count={lead.products.length} />
+                <ul className="rows">
+                  {lead.products.map((p) => (
+                    <li key={p.id} className="product">
+                      <div className="product-head">
+                        <span className="name">{p.name}</span>
+                        <span className="price">{p.price}</span>
+                      </div>
+                      <p className="reason">{p.reason}</p>
+                      <div className="product-meta">
+                        <span className="chip">
+                          <span className="meta-label">Dækning</span> {p.coverage}
+                        </span>
+                        <span className="chip">
+                          <span className="meta-label">Selvrisiko</span> {p.excess}
+                        </span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </Panel>
+
+          <Panel title="Transcript" className="span-2"
+            empty="The live transcript streams in during the call.">
+            {lead.utterances.length > 0 && (
+              <ul className="transcript">
+                {coalesceBySpeaker(lead.utterances).map((turn) => (
+                  <li key={turn.id} className={`utter ${turn.speaker}`}>
+                    <span className="who">{turn.speaker}</span>
+                    <span className="said">{turn.text}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Panel>
         </div>
       </div>
+    </div>
+  );
+}
 
-      {/* Call control — places the real outbound Twilio call (ticket 04). */}
-      <CallBar lead={lead} />
-
-      {/* Utterance composer — feeds the same seam the live call does. A debug-only test affordance
-          (see useDebug): hidden in the real demo, revealed with ?debug=1 to exercise extraction
-          without a call. */}
-      {debug && <Composer leadId={lead.id} />}
-
-      <div className="grid">
-        <Panel title="Attributes" empty="Nothing heard yet — start a call and the AI fills this in.">
-          {heard.length > 0 && (
-            <ul className="rows">
-              {heard.map((a) => (
-                <AttributeRow key={`${a.key}-${a.at}`} attr={a} />
-              ))}
-            </ul>
-          )}
-        </Panel>
-
-        <Panel title="Sources" empty="No source enrichment yet.">
-          {sourceNames.length > 0 && (
-            <div className="source-groups">
-              {sourceNames.map((name) => (
-                <div key={name} className="source-group">
-                  <h4 className="source-name">{name}</h4>
-                  <ul className="rows">
-                    {fromSources
-                      .filter((a) => (a.sourceName ?? "Source") === name)
-                      .map((a) => (
-                        <AttributeRow key={`${a.key}-${a.at}`} attr={a} />
-                      ))}
-                  </ul>
-                </div>
-              ))}
-            </div>
-          )}
-        </Panel>
-
-        <Panel title="Recommended products" empty="Recommendations appear as the graph fills.">
-          {lead.products.length > 0 && (
-            <ul className="rows">
-              {lead.products.map((p) => (
-                <li key={p.id} className="product">
-                  <div className="product-head">
-                    <strong>{p.name}</strong>
-                    <span className="price">{p.price}</span>
-                  </div>
-                  <span className="muted small">{p.reason}</span>
-                  <div className="product-meta small">
-                    <span>
-                      <span className="meta-label">Dækning:</span> {p.coverage}
-                    </span>
-                    <span>
-                      <span className="meta-label">Selvrisiko:</span> {p.excess}
-                    </span>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Panel>
-
-        <Panel title="Transcript" empty="The live transcript streams in during the call.">
-          {lead.utterances.length > 0 && (
-            <ul className="transcript">
-              {coalesceBySpeaker(lead.utterances).map((turn) => (
-                <li key={turn.id} className={`utter ${turn.speaker}`}>
-                  <span className="who">{turn.speaker}</span> {turn.text}
-                </li>
-              ))}
-            </ul>
-          )}
-        </Panel>
+// Hairline data-viz signature: a coverage meter for how much of the 7-product catalogue the
+// graph has triggered so far. Dense vertical ticks (not a filled bar), value big and centred.
+const CATALOGUE_SIZE = 7;
+function CoverageGauge({ count }: { count: number }) {
+  const filled = Math.min(count, CATALOGUE_SIZE);
+  return (
+    <div className="coverage">
+      <div className="coverage-figure">
+        <span className="num">{filled}</span>
+        <span className="cap">af {CATALOGUE_SIZE} dækninger</span>
+      </div>
+      <div className="coverage-bars" aria-hidden="true">
+        {Array.from({ length: CATALOGUE_SIZE }, (_, i) => (
+          <span key={i} className={`tick ${i < filled ? "filled" : ""}`} />
+        ))}
       </div>
     </div>
   );
@@ -255,20 +287,23 @@ function CallBar({ lead }: { lead: Lead }) {
     <div className="callbar">
       {busy ? (
         <button type="button" className="hangup" onClick={hangUp}>
-          ✖ Hang up
+          Hang up
         </button>
       ) : (
         <button type="button" onClick={call}>
-          📞 Call {first}
+          Call {first}
         </button>
       )}
-      <span className="muted small">
-        {state === "idle" &&
-          "Calls the customer through your browser — grant the mic, then talk two-way through the laptop."}
-        {state === "connecting" && "Connecting — allow microphone access…"}
-        {state === "ringing" && `Ringing ${first}…`}
-        {state === "live" && `Live with ${first} — talk. Hang up when you're done.`}
-        {state === "error" && <span className="error">{error}</span>}
+      <span className={`call-status ${state === "live" ? "is-live" : ""}`}>
+        {state === "live" && <span className="live-tick" />}
+        <span>
+          {state === "idle" &&
+            "Calls the customer through your browser — grant the mic, then talk two-way through the laptop."}
+          {state === "connecting" && "Connecting — allow microphone access…"}
+          {state === "ringing" && `Ringing ${first}…`}
+          {state === "live" && `Live with ${first} — talk. Hang up when you're done.`}
+          {state === "error" && <span className="error">{error}</span>}
+        </span>
       </span>
     </div>
   );
@@ -324,17 +359,24 @@ function Composer({ leadId }: { leadId: string }) {
 function Panel({
   title,
   empty,
+  count,
+  className,
   children,
 }: {
   title: string;
   empty: string;
+  count?: number;
+  className?: string;
   children?: React.ReactNode;
 }) {
   const hasContent = Array.isArray(children) ? children.some(Boolean) : Boolean(children);
   return (
-    <section className="panel">
-      <h3>{title}</h3>
-      {hasContent ? children : <p className="muted small">{empty}</p>}
+    <section className={`panel ${className ?? ""}`}>
+      <div className="panel-head">
+        <h3>{title}</h3>
+        {count ? <span className="count-badge">{count}</span> : null}
+      </div>
+      {hasContent ? children : <p className="panel-empty">{empty}</p>}
     </section>
   );
 }

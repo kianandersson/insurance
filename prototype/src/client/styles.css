@@ -1,213 +1,714 @@
+/* ---------------------------------------------------------------------------
+   Soft-fintech design language (ticket 13).
+   Warm off-white canvas, big radii, soft diffuse shadows, one green accent,
+   generous air, no table lines, hairline data-viz. Pixels only — the markup's
+   behaviour is unchanged. Source of truth: .scratch/prototype/design-language.md
+   --------------------------------------------------------------------------- */
+
 :root {
-  color-scheme: light dark;
-  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* palette */
+  --ink-900: #0b0b0b;
+  --ink-600: #5f5f5f;
+  --ink-400: #9b9b9b;
+  --accent-600: #12b23c;
+  --accent-100: #dff3e3;
+  --warn: #f5a524;
+  --danger: #e8563f;
+
+  /* surfaces */
+  --page: #f4f4f2;
+  --canvas: #ffffff;
+  --card: #ffffff;
+  --card-mint: #f2f8f3;
+  --hairline: rgba(0, 0, 0, 0.06);
+
+  /* radii */
+  --r-sm: 12px;
+  --r-md: 20px;
+  --r-lg: 28px;
+  --r-pill: 999px;
+
+  /* shadows */
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.05);
+  --shadow-2: 0 2px 6px rgba(0, 0, 0, 0.05), 0 24px 64px rgba(0, 0, 0, 0.08);
+
+  font-family: "General Sans", Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: var(--ink-900);
 }
+
 * {
   box-sizing: border-box;
 }
+
 body {
   margin: 0;
-  background: #0f1115;
-  color: #e8eaed;
+  min-height: 100vh;
+  color: var(--ink-900);
+  background:
+    radial-gradient(120% 90% at 100% 0%, #edf5ee 0%, rgba(237, 245, 238, 0) 55%),
+    var(--page);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
 }
+
+/* --- primitives ------------------------------------------------------------ */
+
 .center {
   min-height: 100vh;
   display: grid;
   place-items: center;
-  padding: 1rem;
+  padding: 24px;
 }
 .muted {
-  color: #9aa0a6;
+  color: var(--ink-600);
+}
+.small {
+  font-size: 13px;
 }
 .error {
-  color: #ff6b6b;
+  color: var(--danger);
   margin: 0;
 }
-.card {
-  background: #191c22;
-  border: 1px solid #262a33;
-  border-radius: 12px;
-  padding: 1.5rem;
-}
-.login {
-  width: min(360px, 100%);
-  display: grid;
-  gap: 0.75rem;
-}
-.login h1 {
-  margin: 0;
-  font-size: 1.25rem;
-}
+
 input {
-  padding: 0.6rem 0.75rem;
-  border-radius: 8px;
-  border: 1px solid #333844;
-  background: #0f1115;
-  color: inherit;
-  font-size: 1rem;
+  padding: 14px 16px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--hairline);
+  background: var(--canvas);
+  color: var(--ink-900);
+  font: inherit;
+  font-size: 15px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
+input::placeholder {
+  color: var(--ink-400);
+}
+input:focus {
+  outline: none;
+  border-color: var(--accent-600);
+  box-shadow: 0 0 0 4px var(--accent-100);
+}
+
+/* Primary button — black pill, no gradient, no border. */
 button {
-  padding: 0.6rem 0.9rem;
-  border-radius: 8px;
+  padding: 15px 22px;
+  border-radius: var(--r-pill);
   border: 0;
-  background: #3b82f6;
-  color: white;
-  font-size: 1rem;
+  background: var(--ink-900);
+  color: #fff;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 500;
   cursor: pointer;
+  transition: transform 0.12s ease, opacity 0.15s ease, background 0.15s ease;
+}
+button:hover {
+  transform: translateY(-1px);
+}
+button:active {
+  transform: translateY(0);
 }
 button:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: default;
+  transform: none;
 }
+
+/* Secondary — white pill with a hairline. */
+button.secondary {
+  background: var(--canvas);
+  color: var(--ink-900);
+  border: 1px solid var(--hairline);
+  box-shadow: var(--shadow-1);
+}
+
+/* Text link. */
 button.link {
   background: none;
-  color: #9aa0a6;
-  padding: 0;
+  color: var(--ink-600);
+  padding: 6px 0;
+  font-weight: 400;
+  box-shadow: none;
 }
+button.link:hover {
+  color: var(--ink-900);
+  transform: none;
+}
+
+/* --- app shell ------------------------------------------------------------- */
+
 .app {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  padding: 20px;
+  gap: 20px;
 }
 .topbar {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
-  padding: 0.75rem 1rem;
-  border-bottom: 1px solid #262a33;
+  gap: 10px;
+  padding: 12px 18px;
+  background: var(--canvas);
+  border-radius: var(--r-pill);
+  box-shadow: var(--shadow-1);
 }
 .spacer {
   flex: 1;
 }
+.brand {
+  font-weight: 600 !important;
+  color: var(--ink-900) !important;
+  font-size: 16px;
+  letter-spacing: -0.01em;
+}
+
+/* Live-stream indicator — a calm pill, accent only when connected. */
+.live-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 12px;
+  border-radius: var(--r-pill);
+  font-size: 13px;
+  color: var(--ink-600);
+  background: var(--page);
+}
 .dot {
-  width: 9px;
-  height: 9px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
+  background: var(--ink-400);
 }
 .dot.on {
-  background: #34d399;
-  box-shadow: 0 0 8px #34d399;
+  background: var(--accent-600);
+  box-shadow: 0 0 0 4px var(--accent-100);
 }
-.dot.off {
-  background: #6b7280;
-}
+
 .content {
   flex: 1;
-  padding: 2rem;
   display: flex;
   justify-content: center;
+  padding: 8px;
 }
+
+/* The large floating canvas everything sits on. */
+.canvas {
+  width: 100%;
+  max-width: 1040px;
+  background: var(--canvas);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-1);
+  padding: 40px;
+}
+
 .empty {
   text-align: center;
   max-width: 420px;
-  margin: auto;
-}
-.brand {
-  font-weight: 700;
-  color: #e8eaed !important;
-  font-size: 1rem;
-}
-.small {
-  font-size: 0.82rem;
+  margin: 64px auto;
+  display: grid;
+  gap: 16px;
+  justify-items: center;
 }
 
-/* --- Home: new-lead form + list --- */
-.home {
-  width: min(560px, 100%);
-  display: grid;
-  gap: 1.25rem;
-  align-content: start;
+/* --- login ----------------------------------------------------------------- */
+
+.card {
+  background: var(--card);
+  border-radius: var(--r-md);
+  padding: 32px;
+  box-shadow: var(--shadow-2);
 }
+.login {
+  width: min(380px, 100%);
+  display: grid;
+  gap: 16px;
+  text-align: center;
+}
+.login h1 {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 500;
+  letter-spacing: -0.025em;
+}
+.login p {
+  margin: 0;
+}
+.login button {
+  width: 100%;
+  margin-top: 4px;
+}
+
+/* --- home: new-lead form + leads list -------------------------------------- */
+
+.home {
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  gap: 40px;
+  align-items: start;
+}
+@media (max-width: 820px) {
+  .home {
+    grid-template-columns: 1fr;
+  }
+}
+
 .newlead {
   display: grid;
-  gap: 0.75rem;
+  gap: 16px;
+  position: sticky;
+  top: 8px;
 }
 .newlead h2 {
   margin: 0;
-  font-size: 1.1rem;
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
 }
 .newlead label {
   display: grid;
-  gap: 0.3rem;
-  font-size: 0.85rem;
-  color: #9aa0a6;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--ink-400);
 }
+.newlead label input {
+  margin-top: 2px;
+}
+.newlead button[type="submit"] {
+  width: 100%;
+  margin-top: 4px;
+}
+
+/* Segment toggle — pill group. */
 .toggle {
   display: flex;
-  gap: 0.4rem;
+  gap: 6px;
+  padding: 4px;
+  background: var(--page);
+  border-radius: var(--r-pill);
 }
 .seg {
   flex: 1;
-  background: #0f1115;
-  border: 1px solid #333844;
-  color: #9aa0a6;
+  background: transparent;
+  color: var(--ink-600);
+  font-size: 14px;
+  padding: 10px 14px;
+  box-shadow: none;
+}
+.seg:hover {
+  transform: none;
+  color: var(--ink-900);
 }
 .seg.on {
-  background: #1e3a5f;
-  border-color: #3b82f6;
-  color: #e8eaed;
+  background: var(--canvas);
+  color: var(--ink-900);
+  box-shadow: var(--shadow-1);
+}
+
+/* Leads: no table lines — each row a soft card, air between, floating labels. */
+.leads-head {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 16px;
+}
+.leads-head h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
 }
 .leads {
   list-style: none;
   padding: 0;
   margin: 0;
   display: grid;
-  gap: 0.5rem;
+  gap: 12px;
 }
 .leadrow {
   width: 100%;
   text-align: left;
-  background: #191c22;
-  border: 1px solid #262a33;
-  border-radius: 8px;
-  padding: 0.75rem 1rem;
-  color: inherit;
+  background: var(--card);
+  border: 0;
+  border-radius: var(--r-md);
+  padding: 20px 24px;
+  color: var(--ink-900);
   display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 0.5rem;
+  align-items: center;
+  gap: 16px;
+  box-shadow: var(--shadow-1);
+  animation: ease-in 0.35s ease both;
 }
 .leadrow:hover {
-  border-color: #3b82f6;
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-2);
+}
+.leadrow .lead-id {
+  display: grid;
+  gap: 3px;
+  flex: 1;
+}
+.leadrow .lead-name {
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.leadrow .lead-sub {
+  font-size: 13px;
+  color: var(--ink-400);
+}
+.chevron {
+  color: var(--ink-400);
+  font-size: 20px;
+  line-height: 1;
+  flex: 0 0 auto;
+}
+.leads-empty {
+  color: var(--ink-400);
+  font-size: 15px;
+  padding: 8px 0;
 }
 
-/* --- Lead detail --- */
+/* --- lead detail ----------------------------------------------------------- */
+
 .detail {
-  width: min(920px, 100%);
   display: grid;
-  gap: 1rem;
-  align-content: start;
+  gap: 24px;
 }
-.detail-head {
+.detail-back {
+  justify-self: start;
+}
+
+.detail-layout {
   display: grid;
-  grid-template-columns: auto 1fr;
-  align-items: center;
-  gap: 1rem;
+  grid-template-columns: 320px 1fr;
+  gap: 32px;
+  align-items: start;
 }
-.detail-head h1 {
+@media (max-width: 900px) {
+  .detail-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Hero — calm left column: identity + the call control. */
+.hero {
+  display: grid;
+  gap: 24px;
+  position: sticky;
+  top: 8px;
+}
+.hero-id h1 {
   margin: 0;
-  font-size: 1.35rem;
+  font-size: 40px;
+  font-weight: 500;
+  letter-spacing: -0.025em;
+  line-height: 1.05;
 }
-.detail-head p {
-  margin: 0.15rem 0 0;
+.hero-id .hero-sub {
+  margin: 8px 0 0;
+  color: var(--ink-600);
+  font-size: 15px;
 }
+
+/* Call control — black pill primary, white pill secondary, calm status. */
 .callbar {
+  display: grid;
+  gap: 12px;
+}
+.callbar > button {
+  width: 100%;
+}
+.callbar .hangup {
+  background: var(--canvas);
+  color: var(--ink-900);
+  border: 1px solid var(--hairline);
+  box-shadow: var(--shadow-1);
+}
+.call-status {
+  font-size: 14px;
+  color: var(--ink-600);
+  line-height: 1.4;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.call-status.is-live {
+  color: var(--accent-600);
+}
+.call-status .live-tick {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent-600);
+  box-shadow: 0 0 0 4px var(--accent-100);
+  align-self: center;
+  flex: 0 0 auto;
+}
+
+/* Right column — the denser panels. */
+.panels {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+.panels .span-2 {
+  grid-column: 1 / -1;
+}
+@media (max-width: 620px) {
+  .panels {
+    grid-template-columns: 1fr;
+  }
+  .panels .span-2 {
+    grid-column: auto;
+  }
+}
+
+.panel {
+  background: var(--card);
+  border-radius: var(--r-md);
+  padding: 24px;
+  box-shadow: var(--shadow-1);
+}
+.panel-head {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 10px;
+  margin: 0 0 16px;
 }
+.panel-head h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.count-badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: var(--r-pill);
+  background: var(--accent-100);
+  color: var(--accent-600);
+  font-size: 13px;
+  font-weight: 500;
+}
+.panel-empty {
+  color: var(--ink-400);
+  font-size: 14px;
+  margin: 0;
+}
+
+/* Attribute / source rows — card per row, no lines, small pills. */
+.rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 12px 14px;
+  border-radius: var(--r-sm);
+  background: var(--card-mint);
+  animation: ease-in 0.35s ease both;
+}
+.row .key {
+  color: var(--ink-400);
+  font-size: 13px;
+  min-width: 7rem;
+  flex: 1;
+}
+.row .val {
+  font-weight: 500;
+  font-size: 15px;
+}
+
+/* Pills: solid accent = confirmed/source, tint = tentative. */
+.badge {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 3px 9px;
+  border-radius: var(--r-pill);
+  background: var(--accent-600);
+  color: #fff;
+  letter-spacing: 0.01em;
+}
+.badge.tentative {
+  background: var(--accent-100);
+  color: var(--accent-600);
+}
+
+.source-groups {
+  display: grid;
+  gap: 20px;
+}
+.source-group {
+  display: grid;
+  gap: 8px;
+  animation: ease-in 0.35s ease both;
+}
+.source-name {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-400);
+}
+
+/* Recommended products — where the design sings: big tabular price figures. */
+.product {
+  display: grid;
+  gap: 10px;
+  padding: 20px;
+  border-radius: var(--r-md);
+  background: var(--card-mint);
+  animation: ease-in 0.35s ease both;
+}
+.product-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+.product-head .name {
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.product-head .price {
+  font-weight: 400;
+  font-size: 40px;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.product .reason {
+  color: var(--ink-600);
+  font-size: 14px;
+  margin: 0;
+}
+.product-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 2px;
+}
+.product-meta .chip {
+  font-size: 13px;
+  color: var(--ink-600);
+  background: var(--canvas);
+  padding: 5px 12px;
+  border-radius: var(--r-pill);
+}
+.product-meta .chip .meta-label {
+  color: var(--ink-400);
+}
+
+/* Coverage gauge — hairline data-viz: dense vertical ticks, value big + centred. */
+.coverage {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  border-radius: var(--r-md);
+  background: var(--card-mint);
+  margin-bottom: 16px;
+}
+.coverage-figure {
+  display: grid;
+  justify-items: center;
+  line-height: 1;
+}
+.coverage-figure .num {
+  font-size: 48px;
+  font-weight: 400;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+.coverage-figure .cap {
+  font-size: 12px;
+  color: var(--ink-400);
+  margin-top: 4px;
+}
+.coverage-bars {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 40px;
+}
+.coverage-bars .tick {
+  flex: 1;
+  border-radius: 2px;
+  background: var(--hairline);
+  height: 40%;
+  transition: background 0.4s ease, height 0.4s ease;
+}
+.coverage-bars .tick.filled {
+  background: var(--accent-600);
+  height: 100%;
+}
+
+/* Transcript — soft mint bubbles grouped per speaker. */
+.transcript {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+.utter {
+  display: grid;
+  gap: 4px;
+  padding: 12px 16px;
+  border-radius: var(--r-md);
+  background: var(--page);
+  max-width: 85%;
+  animation: ease-in 0.35s ease both;
+}
+.utter.customer {
+  background: var(--accent-100);
+  justify-self: start;
+  border-bottom-left-radius: var(--r-sm);
+}
+.utter.agent {
+  background: var(--page);
+  justify-self: end;
+  border-bottom-right-radius: var(--r-sm);
+}
+.utter .who {
+  font-size: 12px;
+  color: var(--ink-400);
+  text-transform: capitalize;
+}
+.utter .said {
+  font-size: 15px;
+  color: var(--ink-900);
+}
+
+/* Debug composer (hidden unless ?debug=1) — kept plain. */
 .composer {
   display: flex;
-  gap: 0.5rem;
+  gap: 10px;
   align-items: stretch;
+  padding: 16px;
+  border-radius: var(--r-md);
+  background: var(--card-mint);
 }
 .composer .toggle {
   flex: 0 0 auto;
   width: 12rem;
+  background: var(--canvas);
 }
 .composer .seg {
-  font-size: 0.82rem;
-  padding: 0.4rem 0.5rem;
+  font-size: 13px;
+  padding: 8px 10px;
 }
 .composer input {
   flex: 1;
@@ -215,113 +716,26 @@ button.link {
 .composer > button {
   flex: 0 0 auto;
 }
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 1rem;
+
+/* --- motion ---------------------------------------------------------------- */
+
+@keyframes ease-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
-.panel {
-  background: #191c22;
-  border: 1px solid #262a33;
-  border-radius: 10px;
-  padding: 1rem;
-  min-height: 120px;
-}
-.panel h3 {
-  margin: 0 0 0.6rem;
-  font-size: 0.95rem;
-}
-.rows {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 0.4rem;
-}
-.row {
-  display: flex;
-  align-items: baseline;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-  font-size: 0.9rem;
-}
-.row .key {
-  color: #9aa0a6;
-  min-width: 8rem;
-}
-.row .val {
-  font-weight: 600;
-}
-.badge {
-  font-size: 0.7rem;
-  padding: 0.1rem 0.4rem;
-  border-radius: 999px;
-  background: #23303f;
-  color: #9cc4f0;
-}
-.badge.tentative {
-  background: #3a2f1e;
-  color: #e0b877;
-}
-.source-groups {
-  display: grid;
-  gap: 0.9rem;
-}
-.source-group {
-  display: grid;
-  gap: 0.4rem;
-}
-.product {
-  display: grid;
-  gap: 0.35rem;
-  padding: 0.6rem 0.7rem;
-  border: 1px solid #2a3745;
-  border-radius: 0.5rem;
-  background: #1b232d;
-}
-.product-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 0.5rem;
-}
-.product-head .price {
-  font-weight: 700;
-  color: #7bd88f;
-  white-space: nowrap;
-}
-.product-meta {
-  display: grid;
-  gap: 0.15rem;
-  color: #9aa0a6;
-}
-.product-meta .meta-label {
-  color: #6b7684;
-}
-.source-name {
-  margin: 0;
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: #9cc4f0;
-}
-.transcript {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 0.35rem;
-  font-size: 0.9rem;
-}
-.utter .who {
-  color: #9aa0a6;
-  text-transform: capitalize;
-  margin-right: 0.3rem;
-}
-.utter.customer .who {
-  color: #34d399;
-}
-.utter.agent .who {
-  color: #3b82f6;
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
 }

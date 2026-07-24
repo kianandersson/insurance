@@ -67,6 +67,15 @@ function Login({ onSuccess }: { onSuccess: () => void }) {
   );
 }
 
+function LivePill({ live }: { live: boolean }) {
+  return (
+    <span className="live-pill" title={live ? "Live stream connected" : "Connecting…"}>
+      <span className={`dot ${live ? "on" : "off"}`} />
+      {live ? "Live" : "Connecting…"}
+    </span>
+  );
+}
+
 function Shell({ children, onLogout }: { children: React.ReactNode; onLogout: () => void }) {
   const [live, setLive] = useState(false);
 
@@ -88,16 +97,15 @@ function Shell({ children, onLogout }: { children: React.ReactNode; onLogout: ()
         <button type="button" className="brand link" onClick={() => navigate("/")}>
           Live Call Demo
         </button>
-        <span
-          className={`dot ${live ? "on" : "off"}`}
-          title={live ? "Live stream connected" : "Connecting…"}
-        />
         <span className="spacer" />
+        <LivePill live={live} />
         <button className="link" onClick={handleLogout}>
           Log out
         </button>
       </header>
-      <main className="content">{children}</main>
+      <main className="content">
+        <div className="canvas">{children}</div>
+      </main>
     </div>
   );
 }
@@ -118,21 +126,38 @@ function Home() {
   return (
     <div className="home">
       <NewLeadForm onCreated={(lead) => navigate(`/leads/${lead.id}`)} />
-      {leads.length > 0 && (
-        <ul className="leads">
-          {leads.map((l) => (
-            <li key={l.id}>
-              <button type="button" className="leadrow" onClick={() => navigate(`/leads/${l.id}`)}>
-                <strong>{leadDisplayName(l)}</strong>
-                <span className="muted">
-                  {l.phone}
-                  {l.segment ? ` · ${l.segment}` : ""}
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+      <div>
+        <div className="leads-head">
+          <h2>Leads</h2>
+          <span className="muted small">Select a lead to open its live screen.</span>
+        </div>
+        {leads.length > 0 ? (
+          <ul className="leads">
+            {leads.map((l) => (
+              <li key={l.id}>
+                <button
+                  type="button"
+                  className="leadrow"
+                  onClick={() => navigate(`/leads/${l.id}`)}
+                >
+                  <span className="lead-id">
+                    <span className="lead-name">{leadDisplayName(l)}</span>
+                    <span className="lead-sub">
+                      {l.phone}
+                      {l.segment ? ` · ${l.segment}` : ""}
+                    </span>
+                  </span>
+                  <span className="chevron" aria-hidden="true">
+                    ›
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="leads-empty">No leads yet — create one to get started.</p>
+        )}
+      </div>
     </div>
   );
 }
