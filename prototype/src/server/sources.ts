@@ -60,10 +60,8 @@ const ENRICHERS: Enricher[] = [
   },
 ];
 
-// A fake lookup takes a beat, then the facts trickle in one by one — so on screen the Sources panel
-// visibly fills rather than snapping in all at once.
-const INITIAL_DELAY_MS = 1400;
-const STAGGER_MS = 450;
+// No artificial delay — the demo should feel as realtime as possible. When a trigger lands, all of
+// the lookup's facts drop onto the graph at once and go out in a single SSE update.
 
 // Per-lead set of source lookups already fired, so a lookup runs once even though maybeEnrich is
 // called after every extraction pass. Module global, like all the throwaway's "persistence".
@@ -86,31 +84,26 @@ export function maybeEnrich(leadId: string): void {
     const triggered = lead.attributes.some((a) => a.key.toLowerCase().includes(enricher.match));
     if (!triggered) continue;
     firedForLead.add(enricher.sourceName);
-    scheduleEnrichment(leadId, enricher);
+    enrich(leadId, enricher);
   }
 }
 
-function scheduleEnrichment(leadId: string, enricher: Enricher): void {
-  enricher.facts.forEach((fact, i) => {
-    setTimeout(
-      () => dropFact(leadId, enricher.sourceName, fact),
-      INITIAL_DELAY_MS + i * STAGGER_MS,
-    );
-  });
-}
-
-function dropFact(leadId: string, sourceName: string, fact: SourceFact): void {
+function enrich(leadId: string, enricher: Enricher): void {
   const lead = getLead(leadId);
   if (!lead) return;
-  // Never double-add the same source fact (re-fire guard).
-  if (lead.attributes.some((a) => a.key === fact.key && a.provenance === "source")) return;
-  lead.attributes.push({
-    key: fact.key,
-    value: fact.value,
-    provenance: "source",
-    sourceName,
-    verified: true, // register data is authoritative in the fiction
-    at: Date.now(),
-  });
-  touchLead(lead); // Sources panel updates live via SSE
+  let changed = false;
+  for (const fact of enricher.facts) {
+    // Never double-add the same source fact (re-fire guard).
+    if (lead.attributes.some((a) => a.key === fact.key && a.provenance === "source")) continue;
+    lead.attributes.push({
+      key: fact.key,
+      value: fact.value,
+      provenance: "source",
+      sourceName: enricher.sourceName,
+      verified: true, // register data is authoritative in the fiction
+      at: Date.now(),
+    });
+    changed = true;
+  }
+  if (changed) touchLead(lead); // Sources panel updates live via a single SSE push
 }
