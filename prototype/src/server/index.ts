@@ -178,8 +178,10 @@ const server = Bun.serve({
       const leadId = url.searchParams.get("leadId") ?? "";
       const form = new URLSearchParams(await req.text());
       const ev = parseTranscription(form);
+      // CallSid is Twilio's per-call identity — it groups these utterances into one call.
+      const callId = form.get("CallSid") ?? "";
       if (ev.isContent && ev.isFinal && ev.transcript && firstSeen(leadId, ev.sequenceId)) {
-        ingestUtterance(leadId, { speaker: ev.speaker, text: ev.transcript });
+        ingestUtterance(leadId, { speaker: ev.speaker, text: ev.transcript, callId });
       }
       return new Response(null, { status: 204 }); // ack fast; the copilot work is already async
     }

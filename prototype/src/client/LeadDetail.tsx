@@ -1,6 +1,7 @@
-// The live lead screen — a call cockpit. Left rail is the live call (identity, control, the
-// transcript streaming beneath it); the right dossier is what the AI assembles as the customer
-// talks. It loads the lead once, then re-renders purely from server-pushed lead:updated events.
+// The live lead screen — a call cockpit. Left rail is the call: identity, the control, and the
+// call log (each call kept separate, most recent on top, history beneath). The right dossier is
+// what the AI assembles as the customer talks. Loads the lead once, then re-renders purely from
+// server-pushed lead:updated events.
 
 import { Call, Device } from "@twilio/voice-sdk";
 import { useEffect, useRef, useState } from "react";
@@ -30,18 +31,33 @@ function useDebug(): boolean {
   return debug;
 }
 
-// Each Deepgram Final:true is its own utterance, so one speaker's turn arrives as several lines.
-// Merge consecutive same-speaker utterances into a single block, breaking only when the speaker
-// changes. Pure rendering — lead.utterances is left untouched. Carries the first line's timestamp.
+// One turn = a run of consecutive same-speaker lines merged into a block (Deepgram emits several
+// Final:true lines per turn). One call = a run of consecutive lines sharing a callId (Twilio's
+// CallSid). Grouping is pure rendering — lead.utterances is left untouched.
 type Turn = { id: string; speaker: Utterance["speaker"]; text: string; at: number };
-function coalesceBySpeaker(utterances: Utterance[]): Turn[] {
-  const turns: Turn[] = [];
+type CallLog = {
+  callId: string;
+  startedAt: number;
+  endedAt: number;
+  lines: number;
+  turns: Turn[];
+};
+
+function groupCalls(utterances: Utterance[]): CallLog[] {
+  const calls: CallLog[] = [];
   for (const u of utterances) {
-    const last = turns[turns.length - 1];
+    let call = calls[calls.length - 1];
+    if (!call || call.callId !== u.callId) {
+      call = { callId: u.callId, startedAt: u.at, endedAt: u.at, lines: 0, turns: [] };
+      calls.push(call);
+    }
+    call.endedAt = u.at;
+    call.lines += 1;
+    const last = call.turns[call.turns.length - 1];
     if (last && last.speaker === u.speaker) last.text += ` ${u.text}`;
-    else turns.push({ id: u.id, speaker: u.speaker, text: u.text, at: u.at });
+    else call.turns.push({ id: u.id, speaker: u.speaker, text: u.text, at: u.at });
   }
-  return turns;
+  return calls;
 }
 
 function clock(ms: number): string {
@@ -49,9 +65,16 @@ function clock(ms: number): string {
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
+function fmtDuration(ms: number): string {
+  const s = Math.max(0, Math.round(ms / 1000));
+  const m = Math.floor(s / 60);
+  return m > 0 ? `${m}m ${s % 60}s` : `${s}s`;
+}
+
 export function LeadDetail({ id }: { id: string }) {
   const [lead, setLead] = useState<Lead | null>(null);
   const [missing, setMissing] = useState(false);
+  const [callLive, setCallLive] = useState(false);
   const debug = useDebug();
 
   useEffect(() => {
@@ -96,7 +119,8 @@ export function LeadDetail({ id }: { id: string }) {
   for (const s of fromSources) {
     if (!confirmedBy.has(s.key)) confirmedBy.set(s.key, s.sourceName ?? "Register");
   }
-  const turns = coalesceBySpeaker(lead.utterances);
+  // Most recent call first; the top one is "live" only while the browser call is up.
+  const calls = groupCalls(lead.utterances).reverse();
 
   return (
     <div className="detail">
@@ -105,7 +129,7 @@ export function LeadDetail({ id }: { id: string }) {
       </button>
 
       <div className="cockpit">
-        {/* LEFT — the live call: who, the control, the transcript streaming beneath. */}
+        {/* LEFT — the call: who, the control, and each call's log beneath. */}
         <section className="stage">
           <div className="lead-hero">
             <span className="eyebrow">{lead.segment ? lead.segment : "Lead"}</span>
@@ -114,39 +138,32 @@ export function LeadDetail({ id }: { id: string }) {
           </div>
 
           {/* Call control — the real outbound Twilio call (tickets 04/10). */}
-          <CallBar lead={lead} />
+          <CallBar lead={lead} onLiveChange={setCallLive} />
 
           {/* Utterance composer — feeds the same seam the live call does. Debug-only (see useDebug):
               hidden in the real demo, revealed with ?debug=1 to exercise extraction without a call. */}
           {debug && <Composer leadId={lead.id} />}
 
-          <div className="transcript-wrap">
+          <div className="calls">
             <div className="panel-head">
-              <span className="eyebrow">Transcript</span>
-              {turns.length > 0 && <span className="count">{lead.utterances.length}</span>}
+              <span className="eyebrow">Calls</span>
+              {calls.length > 0 && <span className="count">{calls.length}</span>}
             </div>
-            {turns.length > 0 ? (
-              <ul className="transcript">
-                {turns.map((turn) => (
-                  <li key={turn.id} className={`utter ${turn.speaker}`}>
-                    <span className="who">
-                      <span>{turn.speaker}</span>
-                      <span className="mono">{clock(turn.at)}</span>
-                    </span>
-                    <span className="said">{turn.text}</span>
-                  </li>
+            {calls.length > 0 ? (
+              <div className="call-list">
+                {calls.map((call, i) => (
+                  <CallLogView key={call.callId} call={call} live={i === 0 && callLive} />
                 ))}
-              </ul>
+              </div>
             ) : (
-              <p className="transcript-empty">The live transcript streams in during the call.</p>
+              <p className="calls-empty">No calls yet.</p>
             )}
           </div>
         </section>
 
         {/* RIGHT — the dossier the AI assembles. */}
         <div className="dossier">
-          <Panel title="Attributes" count={heard.length}
-            empty="Nothing heard yet — start a call and the AI fills this in.">
+          <Panel title="Attributes" count={heard.length} empty="Nothing heard yet.">
             {heard.length > 0 && (
               <ul className="rows">
                 {heard.map((a) => (
@@ -156,7 +173,7 @@ export function LeadDetail({ id }: { id: string }) {
             )}
           </Panel>
 
-          <Panel title="Sources" count={sourceNames.length} empty="No register enrichment yet.">
+          <Panel title="Sources" count={sourceNames.length} empty="No register matches yet.">
             {sourceNames.length > 0 && (
               <div className="source-groups">
                 {sourceNames.map((name) => (
@@ -183,39 +200,29 @@ export function LeadDetail({ id }: { id: string }) {
             )}
           </Panel>
 
-          <Panel title="Recommended products" count={lead.products.length}
-            empty="Recommendations appear as the graph fills.">
+          <Panel title="Recommended products" count={lead.products.length} empty="No recommendations yet.">
             {lead.products.length > 0 && (
-              <>
-                <div className="products-lead">
-                  <RingGauge count={lead.products.length} />
-                  <div className="products-copy">
-                    <div className="headline">Coverage taking shape</div>
-                    <div className="sub">Derived live from what the graph now holds.</div>
-                  </div>
-                </div>
-                <div className="product-list">
-                  {lead.products.map((p) => (
-                    <div key={p.id} className="product">
-                      <div className="product-top">
-                        <span className="name">{p.name}</span>
-                        <span className="price">{p.price}</span>
-                      </div>
-                      <p className="reason">{p.reason}</p>
-                      <div className="product-meta">
-                        <span className="cell">
-                          <span className="lbl">Dækning</span>
-                          <span className="v">{p.coverage}</span>
-                        </span>
-                        <span className="cell">
-                          <span className="lbl">Selvrisiko</span>
-                          <span className="v">{p.excess}</span>
-                        </span>
-                      </div>
+              <div className="product-list">
+                {lead.products.map((p) => (
+                  <div key={p.id} className="product">
+                    <div className="product-top">
+                      <span className="name">{p.name}</span>
+                      <span className="price">{p.price}</span>
                     </div>
-                  ))}
-                </div>
-              </>
+                    <p className="reason">{p.reason}</p>
+                    <div className="product-meta">
+                      <span className="cell">
+                        <span className="lbl">Dækning</span>
+                        <span className="v">{p.coverage}</span>
+                      </span>
+                      <span className="cell">
+                        <span className="lbl">Selvrisiko</span>
+                        <span className="v">{p.excess}</span>
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </Panel>
         </div>
@@ -224,43 +231,39 @@ export function LeadDetail({ id }: { id: string }) {
   );
 }
 
-// Hairline ring gauge — the brief's data-viz signature done properly: a dense ring of thin radial
-// ticks, filled proportionally to how much of the catalogue the graph has lit up, value big and
-// centred. Real data only (lead.products.length), no invented chart.
-const CATALOGUE_SIZE = 7;
-const TICKS = 40;
-function RingGauge({ count }: { count: number }) {
-  const filled = Math.round((Math.min(count, CATALOGUE_SIZE) / CATALOGUE_SIZE) * TICKS);
-  const size = 96;
-  const c = size / 2;
-  const rOuter = 44;
-  const rInner = 34;
+// One call in the log: a header (time + duration + line count, or a live marker) over its own
+// transcript, coalesced by speaker. Left-ruled log lines — customer green, agent grey.
+function CallLogView({ call, live }: { call: CallLog; live: boolean }) {
   return (
-    <div className="ring">
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
-        {Array.from({ length: TICKS }, (_, i) => {
-          const angle = (i / TICKS) * 2 * Math.PI;
-          const cos = Math.cos(angle);
-          const sin = Math.sin(angle);
-          const lit = i < filled;
-          return (
-            <line
-              key={i}
-              x1={c + rInner * cos}
-              y1={c + rInner * sin}
-              x2={c + rOuter * cos}
-              y2={c + rOuter * sin}
-              stroke={lit ? "var(--accent)" : "var(--line)"}
-              strokeWidth={1.5}
-              strokeLinecap="round"
-            />
-          );
-        })}
-      </svg>
-      <div className="fig">
-        <span className="num">{Math.min(count, CATALOGUE_SIZE)}</span>
-        <span className="cap">of {CATALOGUE_SIZE}</span>
+    <div className={`call-log ${live ? "is-live" : ""}`}>
+      <div className="call-log-head">
+        <span className="when">
+          {live ? (
+            <>
+              <span className="pulse" aria-hidden="true" />
+              Live
+            </>
+          ) : (
+            clock(call.startedAt)
+          )}
+        </span>
+        <span className="meta mono">
+          {live
+            ? `${call.lines} lines`
+            : `${fmtDuration(call.endedAt - call.startedAt)} · ${call.lines} lines`}
+        </span>
       </div>
+      <ul className="transcript">
+        {call.turns.map((turn) => (
+          <li key={turn.id} className={`utter ${turn.speaker}`}>
+            <span className="who">
+              <span>{turn.speaker}</span>
+              <span className="mono">{clock(turn.at)}</span>
+            </span>
+            <span className="said">{turn.text}</span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
@@ -271,7 +274,7 @@ function RingGauge({ count }: { count: number }) {
 // poll; Hang up ends it from the app. A live elapsed timer is display-only off the same state.
 type CallState = "idle" | "connecting" | "ringing" | "live" | "error";
 
-function CallBar({ lead }: { lead: Lead }) {
+function CallBar({ lead, onLiveChange }: { lead: Lead; onLiveChange: (live: boolean) => void }) {
   const deviceRef = useRef<Device | null>(null);
   const callRef = useRef<Call | null>(null);
   const [state, setState] = useState<CallState>("idle");
@@ -328,16 +331,19 @@ function CallBar({ lead }: { lead: Lead }) {
       c.on("accept", () => {
         setState("live");
         setLiveSince(Date.now());
+        onLiveChange(true);
       });
       c.on("error", (e: { message?: string }) => {
         setState("error");
         setError(e?.message ?? "Call error.");
         setLiveSince(null);
+        onLiveChange(false);
         callRef.current = null;
       });
       const end = () => {
         callRef.current = null;
         setLiveSince(null);
+        onLiveChange(false);
         setState((s) => (s === "error" ? s : "idle"));
       };
       c.on("disconnect", end);
@@ -347,6 +353,7 @@ function CallBar({ lead }: { lead: Lead }) {
       setState("error");
       setError(err instanceof Error ? err.message : "Could not start the call.");
       setLiveSince(null);
+      onLiveChange(false);
       callRef.current = null;
     }
   };
@@ -368,12 +375,9 @@ function CallBar({ lead }: { lead: Lead }) {
             </span>
           </>
         ) : (
-          <div className="call-idle-label">
-            <span className="eyebrow">
-              {state === "connecting" ? "Connecting" : state === "ringing" ? "Ringing" : "Ready"}
-            </span>
-            <span className="name">{first}</span>
-          </div>
+          <span className="eyebrow">
+            {state === "connecting" ? "Connecting" : state === "ringing" ? "Ringing" : "Ready to call"}
+          </span>
         )}
       </div>
 
@@ -387,14 +391,16 @@ function CallBar({ lead }: { lead: Lead }) {
         </button>
       )}
 
-      <p className="call-status">
-        {state === "idle" &&
-          "Calls the customer through your browser — grant the mic, then talk two-way through the laptop."}
-        {state === "connecting" && "Connecting — allow microphone access…"}
-        {state === "ringing" && `Ringing ${first}…`}
-        {state === "live" && "Talk. The graph fills as you speak. Hang up when you're done."}
-        {state === "error" && <span className="error">{error}</span>}
-      </p>
+      {state === "idle" && (
+        <p className="call-status">Calls through your browser — allow the microphone when asked.</p>
+      )}
+      {state === "connecting" && <p className="call-status">Connecting — allow microphone access…</p>}
+      {state === "ringing" && <p className="call-status">Ringing {first}…</p>}
+      {state === "error" && (
+        <p className="call-status">
+          <span className="error">{error}</span>
+        </p>
+      )}
     </div>
   );
 }
@@ -433,7 +439,7 @@ function Composer({ leadId }: { leadId: string }) {
       </div>
       <input
         value={text}
-        placeholder="Type what was just said, then Enter — the AI fills the graph…"
+        placeholder="Type what was just said, then Enter…"
         onChange={(e) => setText(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === "Enter") send();

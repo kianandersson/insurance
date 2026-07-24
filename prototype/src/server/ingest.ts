@@ -31,7 +31,7 @@ export interface IngestResult {
 
 export function ingestUtterance(
   leadId: string,
-  input: { speaker: Utterance["speaker"]; text: string },
+  input: { speaker: Utterance["speaker"]; text: string; callId?: string },
   extract: Extractor = extractAttributes,
 ): IngestResult {
   const lead = getLead(leadId);
@@ -42,6 +42,8 @@ export function ingestUtterance(
     speaker: input.speaker,
     text: input.text.trim(),
     at: Date.now(),
+    // The call this line belongs to: Twilio's CallSid on a real call, "manual" for typed input.
+    callId: input.callId?.trim() || "manual",
   };
   lead.utterances.push(utterance);
   touchLead(lead); // transcript panel updates instantly

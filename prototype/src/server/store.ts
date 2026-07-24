@@ -28,6 +28,7 @@ export interface Utterance {
   speaker: "customer" | "agent" | "system";
   text: string;
   at: number;
+  callId: string; // groups utterances into calls — Twilio's CallSid, or "manual" for typed input
 }
 
 export interface Lead {

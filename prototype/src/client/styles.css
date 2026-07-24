@@ -439,25 +439,36 @@ button.link:hover {
   .cockpit {
     grid-template-columns: 1fr;
   }
+  .stage {
+    position: static;
+    max-height: none;
+  }
+  .call-list {
+    overflow: visible;
+  }
 }
 
-/* LEFT — the live call: identity, control, and the transcript beneath it. */
+/* LEFT — the call: identity + control pinned, the call log scrolling beneath. */
 .stage {
   position: sticky;
   top: 8px;
-  display: grid;
-  gap: 22px;
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-height: calc(100vh - 40px);
 }
 .lead-hero {
   display: grid;
-  gap: 10px;
+  gap: 8px;
+  flex: 0 0 auto;
 }
 .lead-hero h1 {
   margin: 0;
-  font-size: clamp(2.4rem, 5vw, 3.4rem);
+  font-size: clamp(1.9rem, 3.6vw, 2.5rem);
   font-weight: 500;
-  letter-spacing: -0.035em;
-  line-height: 0.98;
+  letter-spacing: -0.03em;
+  line-height: 1;
 }
 .lead-hero .lead-phone {
   font-family: var(--mono);
@@ -474,6 +485,7 @@ button.link:hover {
   padding: 22px;
   display: grid;
   gap: 16px;
+  flex: 0 0 auto;
   transition: box-shadow 0.3s ease;
 }
 .callbar.is-live {
@@ -510,17 +522,8 @@ button.link:hover {
   box-shadow: 0 0 0 4px var(--accent-wash);
   animation: pulse 1.4s ease-in-out infinite;
 }
-.call-idle-label {
-  display: grid;
-  gap: 2px;
-}
-.call-idle-label .eyebrow {
+.call-meter .eyebrow {
   margin: 0;
-}
-.call-idle-label .name {
-  font-size: 17px;
-  font-weight: 500;
-  letter-spacing: -0.01em;
 }
 .callbar > button {
   width: 100%;
@@ -543,41 +546,106 @@ button.link:hover {
   font-size: 13.5px;
 }
 
-/* Transcript — belongs with the call; streams under it. */
-.transcript-wrap {
+/* Calls — each call kept separate; the live one on top, history beneath. Pinned header,
+   the list itself scrolls so the console above never leaves the viewport. */
+.calls {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.calls .panel-head {
+  flex: 0 0 auto;
+  margin-bottom: 0;
+}
+.call-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: grid;
+  gap: 18px;
+  align-content: start;
+}
+.calls-empty {
+  color: var(--ink-3);
+  font-size: 14px;
+  margin: 0;
+  padding: 2px;
+}
+.call-log {
   display: grid;
   gap: 12px;
 }
+.call-log + .call-log {
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+.call-log-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.call-log-head .when {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+.call-log.is-live .when {
+  color: var(--accent-deep);
+}
+.call-log-head .when .pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-wash);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+.call-log-head .meta {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-3);
+  letter-spacing: -0.01em;
+}
+
+/* Transcript — a clean left-ruled call log (customer green, agent grey), not chat bubbles. */
 .transcript {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 8px;
+  gap: 12px;
 }
 .utter {
   display: grid;
   gap: 3px;
-  padding: 11px 15px;
-  border-radius: 15px;
-  max-width: 92%;
+  padding-left: 15px;
+  position: relative;
   animation: ease-in 0.35s ease both;
 }
-.utter.customer {
-  background: var(--accent-wash);
-  justify-self: start;
-  border-bottom-left-radius: 5px;
+.utter::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 4px;
+  bottom: 4px;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--ink-3);
 }
-.utter.agent {
-  background: var(--card);
-  box-shadow: var(--shadow-1);
-  justify-self: end;
-  border-bottom-right-radius: 5px;
+.utter.customer::before {
+  background: var(--accent);
 }
 .utter .who {
   display: flex;
-  justify-content: space-between;
-  gap: 10px;
+  align-items: center;
+  gap: 9px;
   font-family: var(--mono);
   font-size: 10.5px;
   letter-spacing: 0.05em;
@@ -585,15 +653,9 @@ button.link:hover {
   color: var(--ink-3);
 }
 .utter .said {
-  font-size: 15px;
+  font-size: 14.5px;
   color: var(--ink);
-  line-height: 1.4;
-}
-.transcript-empty {
-  color: var(--ink-3);
-  font-size: 14px;
-  margin: 0;
-  padding: 2px;
+  line-height: 1.45;
 }
 
 /* RIGHT — the dossier the AI assembles. */
@@ -752,23 +814,7 @@ button.link:hover {
   font-size: 15px;
 }
 
-/* Recommended products — where the design sings. Big tabular prices + ring. */
-.products-lead {
-  display: flex;
-  align-items: center;
-  gap: 22px;
-  margin-bottom: 20px;
-}
-.products-copy .headline {
-  font-size: 19px;
-  font-weight: 500;
-  letter-spacing: -0.015em;
-}
-.products-copy .sub {
-  font-size: 13.5px;
-  color: var(--ink-2);
-  margin-top: 3px;
-}
+/* Recommended products — where the design sings. Big tabular prices, plain reason beneath. */
 .product-list {
   display: grid;
   gap: 12px;
@@ -827,40 +873,6 @@ button.link:hover {
 .product-meta .cell .v {
   font-size: 13.5px;
   color: var(--ink);
-}
-
-/* Hairline ring gauge — dense radial ticks, value big + centred (brief signature). */
-.ring {
-  position: relative;
-  width: 96px;
-  height: 96px;
-  flex: 0 0 auto;
-}
-.ring svg {
-  display: block;
-  transform: rotate(-90deg);
-}
-.ring .fig {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-content: center;
-  text-align: center;
-  line-height: 1;
-}
-.ring .fig .num {
-  font-size: 30px;
-  font-weight: 500;
-  letter-spacing: -0.03em;
-  font-variant-numeric: tabular-nums;
-}
-.ring .fig .cap {
-  font-family: var(--mono);
-  font-size: 9px;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--ink-3);
-  margin-top: 2px;
 }
 
 /* Debug composer (hidden unless ?debug=1). */

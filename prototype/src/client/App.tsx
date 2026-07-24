@@ -50,7 +50,7 @@ function Login({ onSuccess }: { onSuccess: () => void }) {
     <div className="center">
       <form className="card login" onSubmit={submit}>
         <span className="eyebrow">Live call demo</span>
-        <h1>Watch the AI work the call.</h1>
+        <h1>Sign in</h1>
         <p className="muted">Enter the access code from your invite.</p>
         <input
           type="password"
@@ -162,7 +162,6 @@ function Home() {
 }
 
 function NewLeadForm({ onCreated }: { onCreated: (lead: Lead) => void }) {
-  const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [segment, setSegment] = useState<"Private" | "Business">("Private");
   const [busy, setBusy] = useState(false);
@@ -172,7 +171,7 @@ function NewLeadForm({ onCreated }: { onCreated: (lead: Lead) => void }) {
     e.preventDefault();
     setBusy(true);
     setError(false);
-    const lead = await createLead({ name, phone, segment });
+    const lead = await createLead({ phone, segment });
     setBusy(false);
     if (lead) onCreated(lead);
     else setError(true);
@@ -184,10 +183,6 @@ function NewLeadForm({ onCreated }: { onCreated: (lead: Lead) => void }) {
       <label>
         Phone
         <input value={phone} autoFocus placeholder="+4593703142" onChange={(e) => setPhone(e.target.value)} />
-      </label>
-      <label>
-        Name <span className="muted small">(optional — fills in once heard on the call)</span>
-        <input value={name} placeholder="Jane Doe" onChange={(e) => setName(e.target.value)} />
       </label>
       <div className="toggle" role="group" aria-label="Segment">
         {(["Private", "Business"] as const).map((s) => (
