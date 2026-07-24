@@ -6,6 +6,7 @@
     "build": "vite build",
     "start": "bun run src/server/index.ts",
     "dev": "bun run build && bun run start",
+    "setup:voice": "bun run src/server/voice-setup.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

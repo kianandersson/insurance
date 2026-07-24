@@ -14,6 +14,7 @@ import {
   toE164,
   voiceTwiml,
 } from "./twilio.ts";
+import { ensureVoiceProvisioned } from "./voice-setup.ts";
 
 const PORT = Number(process.env.PORT ?? 3000);
 const DIST = join(import.meta.dir, "../../dist");
@@ -165,6 +166,18 @@ function sseStream(): Response {
       connection: "keep-alive",
     },
   });
+}
+
+// Self-provision the softphone's Twilio-side records (API Key + TwiML App) from the creds we
+// already hold, so the human never touches the Twilio console. A failure here (Twilio down, missing
+// base creds) is non-fatal: the rest of the demo still runs; /api/voice-token just 500s until fixed.
+try {
+  await ensureVoiceProvisioned();
+} catch (err) {
+  console.warn(
+    "[voice-setup] provisioning failed — /api/voice-token will 500 until resolved:",
+    err instanceof Error ? err.message : err,
+  );
 }
 
 const server = Bun.serve({
