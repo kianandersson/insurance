@@ -4,6 +4,7 @@
 
 import { join, normalize } from "node:path";
 import { checkPassword, clearCookie, isAuthed, mintCookie } from "./auth.ts";
+import { ingestUtterance } from "./ingest.ts";
 import { createLead, getLead, listLeads, subscribe, type StoreEvent } from "./store.ts";
 
 const PORT = Number(process.env.PORT ?? 3000);
@@ -59,6 +60,18 @@ async function handleApi(req: Request, pathname: string): Promise<Response> {
   if (leadMatch && req.method === "GET") {
     const lead = getLead(leadMatch[1]);
     return lead ? json({ lead }) : json({ error: "not found" }, { status: 404 });
+  }
+
+  // The Utterance seam: typed-text composer (ticket 05) and, later, Twilio's transcription
+  // webhook (ticket 04) both funnel here. Responds immediately; extraction fills the graph async.
+  const utterMatch = pathname.match(/^\/api\/leads\/([^/]+)\/utterances$/);
+  if (utterMatch && req.method === "POST") {
+    const body = (await req.json().catch(() => ({}))) as { speaker?: string; text?: string };
+    if (!body.text?.trim()) return json({ error: "text is required" }, { status: 400 });
+    const speaker =
+      body.speaker === "agent" ? "agent" : body.speaker === "system" ? "system" : "customer";
+    const { utterance } = ingestUtterance(utterMatch[1], { speaker, text: body.text });
+    return utterance ? json({ utterance }) : json({ error: "not found" }, { status: 404 });
   }
 
   return json({ error: "not found" }, { status: 404 });

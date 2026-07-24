@@ -90,6 +90,20 @@ export async function createLead(input: {
   return data.lead;
 }
 
+// Feed one utterance into the seam (typed-text stand-in for the live call). The graph fills
+// from the server-pushed lead:updated events, so there's nothing to read back here.
+export async function postUtterance(
+  leadId: string,
+  input: { speaker: "customer" | "agent"; text: string },
+): Promise<boolean> {
+  const res = await fetch(`/api/leads/${leadId}/utterances`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  return res.ok;
+}
+
 // Subscribe to the server-pushed event stream. Returns an unsubscribe fn.
 export function subscribeEvents(onEvent: (event: StoreEvent) => void): () => void {
   const source = new EventSource("/events");

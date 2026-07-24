@@ -7,6 +7,7 @@ import {
   type AttributeValue,
   getLead,
   type Lead,
+  postUtterance,
   subscribeEvents,
 } from "./api.ts";
 import { navigate } from "./router.ts";
@@ -76,6 +77,10 @@ export function LeadDetail({ id }: { id: string }) {
         <span className="muted small">Calling is wired up in a later step.</span>
       </div>
 
+      {/* Utterance composer — feeds the same seam the live call will. Type what was said and
+          watch the AI fill the Attributes panel. Ticket 04 swaps the real transcript onto this seam. */}
+      <Composer leadId={lead.id} />
+
       <div className="grid">
         <Panel title="Attributes" empty="Nothing heard yet — start a call and the AI fills this in.">
           {heard.length > 0 && (
@@ -122,6 +127,53 @@ export function LeadDetail({ id }: { id: string }) {
           )}
         </Panel>
       </div>
+    </div>
+  );
+}
+
+function Composer({ leadId }: { leadId: string }) {
+  const [text, setText] = useState("");
+  const [speaker, setSpeaker] = useState<"customer" | "agent">("customer");
+  const [sending, setSending] = useState(false);
+
+  const send = async () => {
+    const t = text.trim();
+    if (!t || sending) return;
+    setSending(true);
+    setText(""); // clear optimistically; the transcript arrives via SSE
+    await postUtterance(leadId, { speaker, text: t });
+    setSending(false);
+  };
+
+  return (
+    <div className="composer">
+      <div className="toggle">
+        <button
+          type="button"
+          className={`seg ${speaker === "customer" ? "on" : ""}`}
+          onClick={() => setSpeaker("customer")}
+        >
+          Customer
+        </button>
+        <button
+          type="button"
+          className={`seg ${speaker === "agent" ? "on" : ""}`}
+          onClick={() => setSpeaker("agent")}
+        >
+          Agent
+        </button>
+      </div>
+      <input
+        value={text}
+        placeholder="Type what was just said, then Enter — the AI fills the graph…"
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") send();
+        }}
+      />
+      <button type="button" onClick={send} disabled={sending || !text.trim()}>
+        Send
+      </button>
     </div>
   );
 }
