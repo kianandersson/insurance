@@ -72,10 +72,11 @@ export function getLead(id: string): Lead | undefined {
   return leads.get(id);
 }
 
-export function createLead(input: { name: string; phone: string; segment?: string }): Lead {
+export function createLead(input: { name?: string; phone: string; segment?: string }): Lead {
   const lead: Lead = {
     id: crypto.randomUUID(),
-    name: input.name.trim(),
+    name: (input.name ?? "").trim(), // a cold call starts from a phone; name fills in once heard
+
     phone: input.phone.trim(),
     segment: input.segment?.trim() || undefined,
     createdAt: Date.now(),

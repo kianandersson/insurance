@@ -45,6 +45,12 @@ export type StoreEvent =
   | { type: "lead:updated"; lead: Lead }
   | { type: "ping" };
 
+// A cold call starts from a phone number, not a name — the header/list fall back to the phone
+// (or a last-resort placeholder) until extraction hears a name and promotes it.
+export function leadDisplayName(lead: { name: string; phone: string }): string {
+  return lead.name.trim() || lead.phone.trim() || "Ukendt lead";
+}
+
 export async function getMe(): Promise<boolean> {
   const res = await fetch("/api/me");
   const data = (await res.json()) as { authed: boolean };
@@ -79,7 +85,7 @@ export async function getLead(id: string): Promise<Lead | null> {
 }
 
 export async function createLead(input: {
-  name: string;
+  name?: string;
   phone: string;
   segment?: string;
 }): Promise<Lead | null> {

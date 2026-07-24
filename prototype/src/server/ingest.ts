@@ -60,7 +60,11 @@ async function runExtraction(leadId: string, extract: Extractor): Promise<void> 
     // Re-read: the lead may have moved on while we were awaiting the model.
     const fresh = getLead(leadId);
     if (!fresh) return;
-    if (mergeAiHeard(fresh, extracted)) touchLead(fresh);
+    const changed = mergeAiHeard(fresh, extracted);
+    // Name discovery becomes the anchor: the first clean heard name fills the empty header, then
+    // flows back as extraction context so later garbled mentions reconcile against it.
+    const promoted = maybePromoteName(fresh, extracted);
+    if (changed || promoted) touchLead(fresh);
     // A landed trigger value (address / plate / CVR) fires the fake source lookups (ticket 06).
     maybeEnrich(leadId);
     // Re-derive recommended products from the (now possibly richer) graph (ticket 07).
@@ -72,6 +76,17 @@ async function runExtraction(leadId: string, extract: Extractor): Promise<void> 
       err instanceof Error ? err.message : err,
     );
   }
+}
+
+// Promote a heard person.name onto the lead header — but only while it's still empty, so a name
+// typed at creation (or an earlier heard one) stays the anchor and isn't clobbered by a later
+// garbled mention. Returns true if the header changed.
+function maybePromoteName(lead: Lead, extracted: ExtractedAttribute[]): boolean {
+  if (lead.name.trim()) return false;
+  const heardName = extracted.find((a) => a.key === "person.name")?.value.trim();
+  if (!heardName) return false;
+  lead.name = heardName;
+  return true;
 }
 
 // Upsert AI-heard attributes onto the lead graph. Only ever touches "ai-heard" values, so it

@@ -3,6 +3,7 @@ import {
   createLead,
   getMe,
   type Lead,
+  leadDisplayName,
   listLeads,
   login,
   logout,
@@ -122,7 +123,7 @@ function Home() {
           {leads.map((l) => (
             <li key={l.id}>
               <button type="button" className="leadrow" onClick={() => navigate(`/leads/${l.id}`)}>
-                <strong>{l.name}</strong>
+                <strong>{leadDisplayName(l)}</strong>
                 <span className="muted">
                   {l.phone}
                   {l.segment ? ` · ${l.segment}` : ""}
@@ -157,12 +158,12 @@ function NewLeadForm({ onCreated }: { onCreated: (lead: Lead) => void }) {
     <form className="card newlead" onSubmit={submit}>
       <h2>New lead</h2>
       <label>
-        Name
-        <input value={name} autoFocus placeholder="Jane Doe" onChange={(e) => setName(e.target.value)} />
+        Phone
+        <input value={phone} autoFocus placeholder="+4593703142" onChange={(e) => setPhone(e.target.value)} />
       </label>
       <label>
-        Phone
-        <input value={phone} placeholder="+4593703142" onChange={(e) => setPhone(e.target.value)} />
+        Name <span className="muted small">(optional — fills in once heard on the call)</span>
+        <input value={name} placeholder="Jane Doe" onChange={(e) => setName(e.target.value)} />
       </label>
       <div className="toggle" role="group" aria-label="Segment">
         {(["Private", "Business"] as const).map((s) => (
@@ -177,7 +178,7 @@ function NewLeadForm({ onCreated }: { onCreated: (lead: Lead) => void }) {
         ))}
       </div>
       {error && <p className="error">Could not create the lead — try again.</p>}
-      <button type="submit" disabled={busy || !name.trim() || !phone.trim()}>
+      <button type="submit" disabled={busy || !phone.trim()}>
         {busy ? "Creating…" : "Create & open"}
       </button>
     </form>

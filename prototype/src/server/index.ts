@@ -52,8 +52,8 @@ async function handleApi(req: Request, pathname: string): Promise<Response> {
       phone?: string;
       segment?: string;
     };
-    if (!body.name || !body.phone) {
-      return json({ error: "name and phone are required" }, { status: 400 });
+    if (!body.phone) {
+      return json({ error: "phone is required" }, { status: 400 });
     }
     return json({ lead: createLead({ name: body.name, phone: body.phone, segment: body.segment }) });
   }

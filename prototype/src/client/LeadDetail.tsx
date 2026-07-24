@@ -9,15 +9,45 @@ import {
   getLead,
   getVoiceToken,
   type Lead,
+  leadDisplayName,
   postUtterance,
   subscribeEvents,
   toE164,
+  type Utterance,
 } from "./api.ts";
 import { navigate } from "./router.ts";
+
+// The typed-text composer is a test-only seam, not part of the real demo. Hidden by default;
+// append `?debug=1` to the URL once to reveal it (remembered in localStorage across navigation,
+// `?debug=0` clears it) so the extraction can still be exercised without placing a call.
+function useDebug(): boolean {
+  const [debug] = useState(() => {
+    const q = new URLSearchParams(window.location.search).get("debug");
+    if (q === "1") localStorage.setItem("debug", "1");
+    if (q === "0") localStorage.removeItem("debug");
+    return localStorage.getItem("debug") === "1";
+  });
+  return debug;
+}
+
+// Each Deepgram Final:true is its own utterance, so one speaker's turn arrives as several lines.
+// Merge consecutive same-speaker utterances into a single block for the transcript, breaking only
+// when the speaker changes. Pure rendering — lead.utterances is left untouched.
+type Turn = { id: string; speaker: Utterance["speaker"]; text: string };
+function coalesceBySpeaker(utterances: Utterance[]): Turn[] {
+  const turns: Turn[] = [];
+  for (const u of utterances) {
+    const last = turns[turns.length - 1];
+    if (last && last.speaker === u.speaker) last.text += ` ${u.text}`;
+    else turns.push({ id: u.id, speaker: u.speaker, text: u.text });
+  }
+  return turns;
+}
 
 export function LeadDetail({ id }: { id: string }) {
   const [lead, setLead] = useState<Lead | null>(null);
   const [missing, setMissing] = useState(false);
+  const debug = useDebug();
 
   useEffect(() => {
     let alive = true;
@@ -64,7 +94,7 @@ export function LeadDetail({ id }: { id: string }) {
           ← Leads
         </button>
         <div>
-          <h1>{lead.name}</h1>
+          <h1>{leadDisplayName(lead)}</h1>
           <p className="muted">
             {lead.phone}
             {lead.segment ? ` · ${lead.segment}` : ""}
@@ -75,9 +105,10 @@ export function LeadDetail({ id }: { id: string }) {
       {/* Call control — places the real outbound Twilio call (ticket 04). */}
       <CallBar lead={lead} />
 
-      {/* Utterance composer — feeds the same seam the live call will. Type what was said and
-          watch the AI fill the Attributes panel. Ticket 04 swaps the real transcript onto this seam. */}
-      <Composer leadId={lead.id} />
+      {/* Utterance composer — feeds the same seam the live call does. A debug-only test affordance
+          (see useDebug): hidden in the real demo, revealed with ?debug=1 to exercise extraction
+          without a call. */}
+      {debug && <Composer leadId={lead.id} />}
 
       <div className="grid">
         <Panel title="Attributes" empty="Nothing heard yet — start a call and the AI fills this in.">
@@ -136,9 +167,9 @@ export function LeadDetail({ id }: { id: string }) {
         <Panel title="Transcript" empty="The live transcript streams in during the call.">
           {lead.utterances.length > 0 && (
             <ul className="transcript">
-              {lead.utterances.map((u) => (
-                <li key={u.id} className={`utter ${u.speaker}`}>
-                  <span className="who">{u.speaker}</span> {u.text}
+              {coalesceBySpeaker(lead.utterances).map((turn) => (
+                <li key={turn.id} className={`utter ${turn.speaker}`}>
+                  <span className="who">{turn.speaker}</span> {turn.text}
                 </li>
               ))}
             </ul>
@@ -160,7 +191,8 @@ function CallBar({ lead }: { lead: Lead }) {
   const callRef = useRef<Call | null>(null);
   const [state, setState] = useState<CallState>("idle");
   const [error, setError] = useState<string | null>(null);
-  const first = lead.name.split(" ")[0] || lead.name;
+  // Name may not be known yet on a cold call — fall back to a neutral label for the button/status.
+  const first = lead.name.split(" ")[0] || lead.name || "kunden";
 
   // Tear the Device (and any live call) down when leaving the lead screen.
   useEffect(() => {
