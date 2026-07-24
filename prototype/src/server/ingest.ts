@@ -13,6 +13,7 @@ import {
   type ExtractionContext,
   extractAttributes,
 } from "./extraction.ts";
+import { maybeEnrich } from "./sources.ts";
 import { getLead, type Lead, touchLead, type Utterance } from "./store.ts";
 
 // Injectable so the seam can be tested without a live model (see ingest.test.ts). Context is
@@ -59,6 +60,8 @@ async function runExtraction(leadId: string, extract: Extractor): Promise<void> 
     const fresh = getLead(leadId);
     if (!fresh) return;
     if (mergeAiHeard(fresh, extracted)) touchLead(fresh);
+    // A landed trigger value (address / plate / CVR) fires the fake source lookups (ticket 06).
+    maybeEnrich(leadId);
   } catch (err) {
     // A failed extraction must never kill the call — the utterance still stands in the transcript.
     console.error(
