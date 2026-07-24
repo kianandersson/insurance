@@ -93,24 +93,173 @@ button.link {
 }
 .content {
   flex: 1;
-  display: grid;
-  place-items: center;
   padding: 2rem;
+  display: flex;
+  justify-content: center;
 }
 .empty {
   text-align: center;
   max-width: 420px;
+  margin: auto;
+}
+.brand {
+  font-weight: 700;
+  color: #e8eaed !important;
+  font-size: 1rem;
+}
+.small {
+  font-size: 0.82rem;
+}
+
+/* --- Home: new-lead form + list --- */
+.home {
+  width: min(560px, 100%);
+  display: grid;
+  gap: 1.25rem;
+  align-content: start;
+}
+.newlead {
+  display: grid;
+  gap: 0.75rem;
+}
+.newlead h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+.newlead label {
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+  color: #9aa0a6;
+}
+.toggle {
+  display: flex;
+  gap: 0.4rem;
+}
+.seg {
+  flex: 1;
+  background: #0f1115;
+  border: 1px solid #333844;
+  color: #9aa0a6;
+}
+.seg.on {
+  background: #1e3a5f;
+  border-color: #3b82f6;
+  color: #e8eaed;
 }
 .leads {
   list-style: none;
   padding: 0;
-  width: min(560px, 100%);
+  margin: 0;
   display: grid;
   gap: 0.5rem;
 }
-.leads li {
+.leadrow {
+  width: 100%;
+  text-align: left;
   background: #191c22;
   border: 1px solid #262a33;
   border-radius: 8px;
   padding: 0.75rem 1rem;
+  color: inherit;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+.leadrow:hover {
+  border-color: #3b82f6;
+}
+
+/* --- Lead detail --- */
+.detail {
+  width: min(920px, 100%);
+  display: grid;
+  gap: 1rem;
+  align-content: start;
+}
+.detail-head {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 1rem;
+}
+.detail-head h1 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+.detail-head p {
+  margin: 0.15rem 0 0;
+}
+.callbar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+}
+.panel {
+  background: #191c22;
+  border: 1px solid #262a33;
+  border-radius: 10px;
+  padding: 1rem;
+  min-height: 120px;
+}
+.panel h3 {
+  margin: 0 0 0.6rem;
+  font-size: 0.95rem;
+}
+.rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+.row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  font-size: 0.9rem;
+}
+.row .key {
+  color: #9aa0a6;
+  min-width: 8rem;
+}
+.row .val {
+  font-weight: 600;
+}
+.badge {
+  font-size: 0.7rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  background: #23303f;
+  color: #9cc4f0;
+}
+.badge.tentative {
+  background: #3a2f1e;
+  color: #e0b877;
+}
+.transcript {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+}
+.utter .who {
+  color: #9aa0a6;
+  text-transform: capitalize;
+  margin-right: 0.3rem;
+}
+.utter.customer .who {
+  color: #34d399;
+}
+.utter.agent .who {
+  color: #3b82f6;
 }

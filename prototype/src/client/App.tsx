@@ -1,8 +1,19 @@
 import { useEffect, useState } from "react";
-import { getMe, listLeads, login, logout, subscribeEvents, type Lead } from "./api.ts";
+import {
+  createLead,
+  getMe,
+  type Lead,
+  listLeads,
+  login,
+  logout,
+  subscribeEvents,
+} from "./api.ts";
+import { LeadDetail } from "./LeadDetail.tsx";
+import { navigate, usePath } from "./router.ts";
 
 export function App() {
   const [authed, setAuthed] = useState<boolean | null>(null);
+  const path = usePath();
 
   useEffect(() => {
     getMe().then(setAuthed);
@@ -10,7 +21,13 @@ export function App() {
 
   if (authed === null) return <div className="center muted">Loading…</div>;
   if (!authed) return <Login onSuccess={() => setAuthed(true)} />;
-  return <Home onLogout={() => setAuthed(false)} />;
+
+  const leadMatch = path.match(/^\/leads\/([^/]+)$/);
+  return (
+    <Shell onLogout={() => setAuthed(false)}>
+      {leadMatch ? <LeadDetail id={leadMatch[1]} /> : <Home />}
+    </Shell>
+  );
 }
 
 function Login({ onSuccess }: { onSuccess: () => void }) {
@@ -49,18 +66,12 @@ function Login({ onSuccess }: { onSuccess: () => void }) {
   );
 }
 
-function Home({ onLogout }: { onLogout: () => void }) {
-  const [leads, setLeads] = useState<Lead[]>([]);
+function Shell({ children, onLogout }: { children: React.ReactNode; onLogout: () => void }) {
   const [live, setLive] = useState(false);
 
   useEffect(() => {
-    listLeads().then(setLeads);
     const unsubscribe = subscribeEvents((event) => {
       if (event.type === "hello") setLive(true);
-      if (event.type === "lead:created" || event.type === "lead:updated") {
-        // Later tickets push lead changes; refresh the list from the pushed state.
-        listLeads().then(setLeads);
-      }
     });
     return unsubscribe;
   }, []);
@@ -73,32 +84,102 @@ function Home({ onLogout }: { onLogout: () => void }) {
   return (
     <div className="app">
       <header className="topbar">
-        <strong>Live Call Demo</strong>
-        <span className={`dot ${live ? "on" : "off"}`} title={live ? "Live stream connected" : "Connecting…"} />
+        <button type="button" className="brand link" onClick={() => navigate("/")}>
+          Live Call Demo
+        </button>
+        <span
+          className={`dot ${live ? "on" : "off"}`}
+          title={live ? "Live stream connected" : "Connecting…"}
+        />
         <span className="spacer" />
         <button className="link" onClick={handleLogout}>
           Log out
         </button>
       </header>
-      <main className="content">
-        {leads.length === 0 ? (
-          <div className="empty">
-            <h2>No leads yet</h2>
-            <p className="muted">
-              This is the empty home screen. The next ticket adds the “new lead” form and the live
-              lead screen that fills in during a call.
-            </p>
-          </div>
-        ) : (
-          <ul className="leads">
-            {leads.map((l) => (
-              <li key={l.id}>
-                <strong>{l.name}</strong> — {l.phone}
-              </li>
-            ))}
-          </ul>
-        )}
-      </main>
+      <main className="content">{children}</main>
     </div>
+  );
+}
+
+function Home() {
+  const [leads, setLeads] = useState<Lead[]>([]);
+
+  useEffect(() => {
+    listLeads().then(setLeads);
+    const unsubscribe = subscribeEvents((event) => {
+      if (event.type === "lead:created" || event.type === "lead:updated") {
+        listLeads().then(setLeads);
+      }
+    });
+    return unsubscribe;
+  }, []);
+
+  return (
+    <div className="home">
+      <NewLeadForm onCreated={(lead) => navigate(`/leads/${lead.id}`)} />
+      {leads.length > 0 && (
+        <ul className="leads">
+          {leads.map((l) => (
+            <li key={l.id}>
+              <button type="button" className="leadrow" onClick={() => navigate(`/leads/${l.id}`)}>
+                <strong>{l.name}</strong>
+                <span className="muted">
+                  {l.phone}
+                  {l.segment ? ` · ${l.segment}` : ""}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function NewLeadForm({ onCreated }: { onCreated: (lead: Lead) => void }) {
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [segment, setSegment] = useState<"Private" | "Business">("Private");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(false);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError(false);
+    const lead = await createLead({ name, phone, segment });
+    setBusy(false);
+    if (lead) onCreated(lead);
+    else setError(true);
+  }
+
+  return (
+    <form className="card newlead" onSubmit={submit}>
+      <h2>New lead</h2>
+      <label>
+        Name
+        <input value={name} autoFocus placeholder="Jane Doe" onChange={(e) => setName(e.target.value)} />
+      </label>
+      <label>
+        Phone
+        <input value={phone} placeholder="+4593703142" onChange={(e) => setPhone(e.target.value)} />
+      </label>
+      <div className="toggle" role="group" aria-label="Segment">
+        {(["Private", "Business"] as const).map((s) => (
+          <button
+            key={s}
+            type="button"
+            className={segment === s ? "seg on" : "seg"}
+            onClick={() => setSegment(s)}
+          >
+            {s}
+          </button>
+        ))}
+      </div>
+      {error && <p className="error">Could not create the lead — try again.</p>}
+      <button type="submit" disabled={busy || !name.trim() || !phone.trim()}>
+        {busy ? "Creating…" : "Create & open"}
+      </button>
+    </form>
   );
 }
