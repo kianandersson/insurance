@@ -2,14 +2,16 @@
 // It loads the lead once, then re-renders purely from server-pushed lead:updated events.
 // Every panel is a shell today; tickets 04–07 push values the panels already know how to draw.
 
-import { useEffect, useState } from "react";
+import { Call, Device } from "@twilio/voice-sdk";
+import { useEffect, useRef, useState } from "react";
 import {
   type AttributeValue,
   getLead,
+  getVoiceToken,
   type Lead,
   postUtterance,
-  startCall,
   subscribeEvents,
+  toE164,
 } from "./api.ts";
 import { navigate } from "./router.ts";
 
@@ -147,34 +149,93 @@ export function LeadDetail({ id }: { id: string }) {
   );
 }
 
+// Browser softphone (ticket 10). The seller clicks Call → the browser becomes a Twilio Voice
+// participant, Twilio bridges it to the customer's real number, and they talk two-way through the
+// laptop. State is driven purely off Device/Call events, so the button reflects call-end without a
+// poll; Hang up ends it from the app. No robot voice. (Graph-filling returns in ticket 11.)
+type CallState = "idle" | "connecting" | "ringing" | "live" | "error";
+
 function CallBar({ lead }: { lead: Lead }) {
-  const [state, setState] = useState<"idle" | "calling" | "live" | "error">("idle");
+  const deviceRef = useRef<Device | null>(null);
+  const callRef = useRef<Call | null>(null);
+  const [state, setState] = useState<CallState>("idle");
   const [error, setError] = useState<string | null>(null);
-  const first = lead.name.split(" ")[0];
+  const first = lead.name.split(" ")[0] || lead.name;
+
+  // Tear the Device (and any live call) down when leaving the lead screen.
+  useEffect(() => {
+    return () => {
+      callRef.current?.disconnect();
+      deviceRef.current?.destroy();
+      deviceRef.current = null;
+      callRef.current = null;
+    };
+  }, []);
+
+  const ensureDevice = async (): Promise<Device> => {
+    if (deviceRef.current) return deviceRef.current;
+    const token = await getVoiceToken();
+    if (!token) {
+      throw new Error("Could not get a voice token — is Twilio Voice configured?");
+    }
+    const device = new Device(token);
+    deviceRef.current = device;
+    return device;
+  };
 
   const call = async () => {
-    setState("calling");
     setError(null);
-    const { ok, error } = await startCall(lead.id);
-    if (ok) {
-      setState("live");
-    } else {
+    setState("connecting");
+    try {
+      const device = await ensureDevice();
+      // Prompts for mic permission (secure context: served over the HTTPS tunnel). Twilio fetches
+      // /twiml/outgoing with these params and dials the customer.
+      const c = await device.connect({
+        params: { To: toE164(lead.phone), leadId: lead.id },
+      });
+      callRef.current = c;
+      c.on("ringing", () => setState("ringing"));
+      c.on("accept", () => setState("live"));
+      c.on("error", (e: { message?: string }) => {
+        setState("error");
+        setError(e?.message ?? "Call error.");
+        callRef.current = null;
+      });
+      const end = () => {
+        callRef.current = null;
+        setState((s) => (s === "error" ? s : "idle"));
+      };
+      c.on("disconnect", end);
+      c.on("cancel", end);
+      c.on("reject", end);
+    } catch (err) {
       setState("error");
-      setError(error ?? "Could not start the call.");
+      setError(err instanceof Error ? err.message : "Could not start the call.");
+      callRef.current = null;
     }
   };
 
+  const hangUp = () => callRef.current?.disconnect();
+
+  const busy = state === "connecting" || state === "ringing" || state === "live";
+
   return (
     <div className="callbar">
-      <button type="button" onClick={call} disabled={state === "calling" || state === "live"}>
-        📞 {state === "live" ? `Calling ${first}…` : `Call ${first}`}
-      </button>
+      {busy ? (
+        <button type="button" className="hangup" onClick={hangUp}>
+          ✖ Hang up
+        </button>
+      ) : (
+        <button type="button" onClick={call}>
+          📞 Call {first}
+        </button>
+      )}
       <span className="muted small">
         {state === "idle" &&
-          "Places a real call to the lead's phone. Answer it (put it on speaker) and just talk."}
-        {state === "calling" && "Placing the call…"}
-        {state === "live" &&
-          "Call in progress — speak, and watch the graph fill from the live transcript."}
+          "Calls the customer through your browser — grant the mic, then talk two-way through the laptop."}
+        {state === "connecting" && "Connecting — allow microphone access…"}
+        {state === "ringing" && `Ringing ${first}…`}
+        {state === "live" && `Live with ${first} — talk. Hang up when you're done.`}
         {state === "error" && <span className="error">{error}</span>}
       </span>
     </div>

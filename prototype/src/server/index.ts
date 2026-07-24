@@ -6,7 +6,14 @@ import { join, normalize } from "node:path";
 import { checkPassword, clearCookie, isAuthed, mintCookie } from "./auth.ts";
 import { ingestUtterance } from "./ingest.ts";
 import { createLead, getLead, listLeads, subscribe, type StoreEvent } from "./store.ts";
-import { parseTranscription, placeCall, toE164, voiceTwiml } from "./twilio.ts";
+import {
+  mintVoiceToken,
+  outgoingTwiml,
+  parseTranscription,
+  placeCall,
+  toE164,
+  voiceTwiml,
+} from "./twilio.ts";
 
 const PORT = Number(process.env.PORT ?? 3000);
 const DIST = join(import.meta.dir, "../../dist");
@@ -75,8 +82,20 @@ async function handleApi(req: Request, pathname: string): Promise<Response> {
     return utterance ? json({ utterance }) : json({ error: "not found" }, { status: 404 });
   }
 
-  // Place the real outbound Twilio call to this lead (ticket 04). The stakeholder triggers this
-  // from the lead screen; the live transcript then flows back through /twilio/transcription.
+  // Mint a Voice AccessToken for the browser softphone (ticket 10). The lead screen fetches this,
+  // then creates a Twilio Device and connects — bridging the seller's browser to the customer.
+  if (pathname === "/api/voice-token" && req.method === "GET") {
+    try {
+      return json({ token: mintVoiceToken("seller") });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "token failed";
+      console.error("[voice-token]", message);
+      return json({ error: message }, { status: 500 });
+    }
+  }
+
+  // Place the real outbound Twilio call to this lead (ticket 04 — DORMANT solo path, superseded by
+  // the ticket 10 softphone). Kept behind the API but no longer wired to the Call button.
   const callMatch = pathname.match(/^\/api\/leads\/([^/]+)\/call$/);
   if (callMatch && req.method === "POST") {
     const lead = getLead(callMatch[1]);
@@ -162,6 +181,21 @@ const server = Bun.serve({
       const leadId = url.searchParams.get("leadId") ?? "";
       const base = process.env.PUBLIC_BASE_URL ?? `https://${req.headers.get("host") ?? ""}`;
       return new Response(voiceTwiml(leadId, base), {
+        headers: { "content-type": "text/xml" },
+      });
+    }
+
+    // The browser softphone's TwiML (ticket 10). When the seller's Device calls connect(), Twilio
+    // fetches this (via the TwiML App) with the `To` + `leadId` params the Device passed. We bridge
+    // the browser to the customer's number — no robot voice. (Ticket 11 hangs transcription here.)
+    if (pathname === "/twiml/outgoing") {
+      const form = new URLSearchParams(
+        req.method === "POST" ? await req.text() : url.searchParams.toString(),
+      );
+      const to = form.get("To") ?? "";
+      const leadId = form.get("leadId") ?? "";
+      const from = process.env.TWILIO_FROM_NUMBER ?? "";
+      return new Response(outgoingTwiml(to, leadId, from), {
         headers: { "content-type": "text/xml" },
       });
     }

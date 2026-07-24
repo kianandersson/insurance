@@ -11,6 +11,7 @@
 // onto the normalized Utterance seam, so past ingestUtterance the AI core cannot tell a spoken
 // line from a typed one — exactly the seam ticket 05 was built against.
 
+import twilio from "twilio";
 import type { Lead } from "./store.ts";
 
 const API_BASE = "https://api.twilio.com/2010-04-01";
@@ -80,6 +81,52 @@ export function voiceTwiml(leadId: string, base: string): string {
   </Start>
   <Say voice="Polly.Naja" language="da-DK">Du er forbundet. Fortæl frit om dig selv, dit hjem, din bil og din familie, så udfylder systemet oplysningerne mens du taler.</Say>
   <Pause length="300" />
+</Response>`;
+}
+
+// ---------------------------------------------------------------------------
+// Ticket 10 — browser softphone (topology redraw).
+//
+// The solo functions above (placeCall / voiceTwiml) are now DORMANT: the demo no longer dials the
+// lead's own phone and plays a robot greeting. Instead the seller's browser is a call participant
+// (Twilio Voice JS SDK) and Twilio bridges it to the customer's number. Two pieces live here:
+//   1. mintVoiceToken — the signed AccessToken the browser Device needs to connect.
+//   2. outgoingTwiml — what Twilio fetches for that browser leg: <Dial> the customer, no <Say>.
+// ---------------------------------------------------------------------------
+
+const AccessToken = twilio.jwt.AccessToken;
+const VoiceGrant = AccessToken.VoiceGrant;
+
+// Mint a short-lived Voice AccessToken for the browser Device. Signed with a Twilio API Key/Secret
+// (distinct from the Account SID / Auth Token used for REST), it carries a VoiceGrant pointing at
+// our TwiML App — so when the browser calls device.connect(), Twilio fetches THAT app's Voice URL
+// (our /twiml/outgoing). Outgoing-only: the seller never receives inbound browser calls.
+export function mintVoiceToken(identity: string): string {
+  const accountSid = process.env.TWILIO_ACCOUNT_SID;
+  const apiKeySid = process.env.TWILIO_API_KEY_SID;
+  const apiKeySecret = process.env.TWILIO_API_KEY_SECRET;
+  const appSid = process.env.TWILIO_TWIML_APP_SID;
+  if (!accountSid || !apiKeySid || !apiKeySecret || !appSid) {
+    throw new Error(
+      "Twilio Voice not configured (need TWILIO_API_KEY_SID/SECRET + TWILIO_TWIML_APP_SID)",
+    );
+  }
+  const token = new AccessToken(accountSid, apiKeySid, apiKeySecret, { identity, ttl: 3600 });
+  token.addGrant(new VoiceGrant({ outgoingApplicationSid: appSid, incomingAllow: false }));
+  return token.toJwt();
+}
+
+// The TwiML the browser leg fetches (Twilio POSTs `To` + `leadId` — the params the Device passed to
+// connect()). Bridge the seller's browser to the customer's real number: no <Say>, no robot voice.
+// answerOnBridge="true" gives the seller real ringback and defers the bridge until the customer
+// actually answers. timeLimit="300" is the hard 5-min cap (back on <Dial>, where it belongs).
+// leadId rides through so ticket 11 can hang <Start><Transcription> here to refill the graph.
+export function outgoingTwiml(to: string, _leadId: string, from: string): string {
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Dial callerId="${from}" answerOnBridge="true" timeLimit="300">
+    <Number>${toE164(to)}</Number>
+  </Dial>
 </Response>`;
 }
 

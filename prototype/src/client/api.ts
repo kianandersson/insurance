@@ -115,6 +115,25 @@ export async function startCall(leadId: string): Promise<{ ok: boolean; error?: 
   return { ok: res.ok && data.ok !== false, error: data.error };
 }
 
+// Fetch a Twilio Voice AccessToken for the browser softphone (ticket 10). The Device is created
+// from this; null means Voice isn't configured (or the mint failed) — the CallBar shows the error.
+export async function getVoiceToken(): Promise<string | null> {
+  const res = await fetch("/api/voice-token");
+  if (!res.ok) return null;
+  const data = (await res.json().catch(() => ({}))) as { token?: string };
+  return data.token ?? null;
+}
+
+// Client-side twin of the server's toE164 (throwaway: duplicated rather than shared). The browser
+// passes the dialed number to device.connect(), so it normalizes the lead's stored phone here.
+export function toE164(raw: string): string {
+  const s = raw.replace(/[^\d+]/g, "");
+  if (s.startsWith("+")) return s;
+  if (s.startsWith("00")) return `+${s.slice(2)}`;
+  if (/^\d{8}$/.test(s)) return `+45${s}`;
+  return s;
+}
+
 // Subscribe to the server-pushed event stream. Returns an unsubscribe fn.
 export function subscribeEvents(onEvent: (event: StoreEvent) => void): () => void {
   const source = new EventSource("/events");
