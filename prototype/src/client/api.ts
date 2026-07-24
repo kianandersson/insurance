@@ -104,6 +104,14 @@ export async function postUtterance(
   return res.ok;
 }
 
+// Place the real outbound Twilio call to this lead. The transcript + graph then fill live via
+// the SSE stream, so there's nothing to read back beyond whether the call was accepted.
+export async function startCall(leadId: string): Promise<{ ok: boolean; error?: string }> {
+  const res = await fetch(`/api/leads/${leadId}/call`, { method: "POST" });
+  const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+  return { ok: res.ok && data.ok !== false, error: data.error };
+}
+
 // Subscribe to the server-pushed event stream. Returns an unsubscribe fn.
 export function subscribeEvents(onEvent: (event: StoreEvent) => void): () => void {
   const source = new EventSource("/events");

@@ -8,6 +8,7 @@ import {
   getLead,
   type Lead,
   postUtterance,
+  startCall,
   subscribeEvents,
 } from "./api.ts";
 import { navigate } from "./router.ts";
@@ -69,13 +70,8 @@ export function LeadDetail({ id }: { id: string }) {
         </div>
       </div>
 
-      {/* Call control — a shell button today; ticket 04 wires the real Twilio call to it. */}
-      <div className="callbar">
-        <button type="button" disabled title="Wired up in the Twilio-call ticket">
-          📞 Call {lead.name.split(" ")[0]}
-        </button>
-        <span className="muted small">Calling is wired up in a later step.</span>
-      </div>
+      {/* Call control — places the real outbound Twilio call (ticket 04). */}
+      <CallBar lead={lead} />
 
       {/* Utterance composer — feeds the same seam the live call will. Type what was said and
           watch the AI fill the Attributes panel. Ticket 04 swaps the real transcript onto this seam. */}
@@ -127,6 +123,40 @@ export function LeadDetail({ id }: { id: string }) {
           )}
         </Panel>
       </div>
+    </div>
+  );
+}
+
+function CallBar({ lead }: { lead: Lead }) {
+  const [state, setState] = useState<"idle" | "calling" | "live" | "error">("idle");
+  const [error, setError] = useState<string | null>(null);
+  const first = lead.name.split(" ")[0];
+
+  const call = async () => {
+    setState("calling");
+    setError(null);
+    const { ok, error } = await startCall(lead.id);
+    if (ok) {
+      setState("live");
+    } else {
+      setState("error");
+      setError(error ?? "Could not start the call.");
+    }
+  };
+
+  return (
+    <div className="callbar">
+      <button type="button" onClick={call} disabled={state === "calling" || state === "live"}>
+        📞 {state === "live" ? `Calling ${first}…` : `Call ${first}`}
+      </button>
+      <span className="muted small">
+        {state === "idle" &&
+          "Places a real call to the lead's phone. Answer it (put it on speaker) and just talk."}
+        {state === "calling" && "Placing the call…"}
+        {state === "live" &&
+          "Call in progress — speak, and watch the graph fill from the live transcript."}
+        {state === "error" && <span className="error">{error}</span>}
+      </span>
     </div>
   );
 }

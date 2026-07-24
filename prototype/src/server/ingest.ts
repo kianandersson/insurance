@@ -36,7 +36,9 @@ export function ingestUtterance(
   lead.utterances.push(utterance);
   touchLead(lead); // transcript panel updates instantly
 
-  const extraction = runExtraction(leadId, extract);
+  // "system" lines are call-status announcements, not spoken facts — never worth a model call.
+  const extraction =
+    input.speaker === "system" ? Promise.resolve() : runExtraction(leadId, extract);
   return { utterance, extraction };
 }
 

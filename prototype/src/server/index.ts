@@ -6,6 +6,7 @@ import { join, normalize } from "node:path";
 import { checkPassword, clearCookie, isAuthed, mintCookie } from "./auth.ts";
 import { ingestUtterance } from "./ingest.ts";
 import { createLead, getLead, listLeads, subscribe, type StoreEvent } from "./store.ts";
+import { parseTranscription, placeCall, toE164, voiceTwiml } from "./twilio.ts";
 
 const PORT = Number(process.env.PORT ?? 3000);
 const DIST = join(import.meta.dir, "../../dist");
@@ -74,7 +75,43 @@ async function handleApi(req: Request, pathname: string): Promise<Response> {
     return utterance ? json({ utterance }) : json({ error: "not found" }, { status: 404 });
   }
 
+  // Place the real outbound Twilio call to this lead (ticket 04). The stakeholder triggers this
+  // from the lead screen; the live transcript then flows back through /twilio/transcription.
+  const callMatch = pathname.match(/^\/api\/leads\/([^/]+)\/call$/);
+  if (callMatch && req.method === "POST") {
+    const lead = getLead(callMatch[1]);
+    if (!lead) return json({ error: "not found" }, { status: 404 });
+    try {
+      const { sid } = await placeCall(lead);
+      // A system line in the transcript so any viewer sees the call was placed (skipped by
+      // extraction — see ingest.ts). The real speech arrives via the transcription webhook.
+      ingestUtterance(lead.id, {
+        speaker: "system",
+        text: `Call started to ${lead.name} (${toE164(lead.phone)}).`,
+      });
+      return json({ ok: true, callSid: sid });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "call failed";
+      console.error(`[call] lead ${lead.id}:`, message);
+      return json({ ok: false, error: message }, { status: 502 });
+    }
+  }
+
   return json({ error: "not found" }, { status: 404 });
+}
+
+// Per-lead set of transcription SequenceIds already ingested — Twilio may retry a webhook, and
+// finals must not double-post onto the transcript. In-memory, like everything else here.
+const seenSequences = new Map<string, Set<string>>();
+function firstSeen(leadId: string, sequenceId: string): boolean {
+  let set = seenSequences.get(leadId);
+  if (!set) {
+    set = new Set();
+    seenSequences.set(leadId, set);
+  }
+  if (sequenceId && set.has(sequenceId)) return false;
+  if (sequenceId) set.add(sequenceId);
+  return true;
 }
 
 function sseStream(): Response {
@@ -115,7 +152,30 @@ const server = Bun.serve({
   port: PORT,
   idleTimeout: 0, // keep SSE connections open
   async fetch(req) {
-    const { pathname } = new URL(req.url);
+    const url = new URL(req.url);
+    const { pathname } = url;
+
+    // --- Twilio-facing endpoints (PUBLIC: Twilio's servers call these; no cookie to gate on) ---
+
+    // TwiML Twilio fetches when the lead answers. Twilio POSTs by default, but tolerate GET too.
+    if (pathname === "/twiml/voice") {
+      const leadId = url.searchParams.get("leadId") ?? "";
+      const base = process.env.PUBLIC_BASE_URL ?? `https://${req.headers.get("host") ?? ""}`;
+      return new Response(voiceTwiml(leadId, base), {
+        headers: { "content-type": "text/xml" },
+      });
+    }
+
+    // The live transcription feed: each Final:true event → one normalized Utterance on the seam.
+    if (pathname === "/twilio/transcription" && req.method === "POST") {
+      const leadId = url.searchParams.get("leadId") ?? "";
+      const form = new URLSearchParams(await req.text());
+      const ev = parseTranscription(form);
+      if (ev.isContent && ev.isFinal && ev.transcript && firstSeen(leadId, ev.sequenceId)) {
+        ingestUtterance(leadId, { speaker: ev.speaker, text: ev.transcript });
+      }
+      return new Response(null, { status: 204 }); // ack fast; the copilot work is already async
+    }
 
     if (pathname.startsWith("/api/")) return handleApi(req, pathname);
 
